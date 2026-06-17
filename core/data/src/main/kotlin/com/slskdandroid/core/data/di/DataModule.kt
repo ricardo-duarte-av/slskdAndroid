@@ -4,8 +4,10 @@ import com.slskdandroid.core.data.ConnectionSettingsRepository
 import com.slskdandroid.core.data.DefaultConnectionSettingsRepository
 import com.slskdandroid.core.data.DefaultDownloadsRepository
 import com.slskdandroid.core.data.DefaultSearchRepository
+import com.slskdandroid.core.data.DefaultUploadsRepository
 import com.slskdandroid.core.data.DownloadsRepository
 import com.slskdandroid.core.data.SearchRepository
+import com.slskdandroid.core.data.UploadsRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -23,6 +25,10 @@ internal interface DataModule {
     @Binds
     @Singleton
     fun bindsDownloadsRepository(impl: DefaultDownloadsRepository): DownloadsRepository
+
+    @Binds
+    @Singleton
+    fun bindsUploadsRepository(impl: DefaultUploadsRepository): UploadsRepository
 
     @Binds
     @Singleton

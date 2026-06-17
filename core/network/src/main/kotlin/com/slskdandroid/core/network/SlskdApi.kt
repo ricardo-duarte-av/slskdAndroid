@@ -52,4 +52,19 @@ interface SlskdApi {
         @Path("id") id: String,
         @Query("remove") remove: Boolean,
     )
+
+    /** All uploads, grouped by user then directory. Same shape as downloads; poll it (no push hub). */
+    @GET("api/v0/transfers/uploads")
+    suspend fun getUploads(): List<NetworkUserDownloads>
+
+    /**
+     * Cancels the upload [id] to [username]. With [remove] = true it is also dropped from the
+     * server's list. There is no upload (re-)initiation endpoint — uploads are peer-driven.
+     */
+    @DELETE("api/v0/transfers/uploads/{username}/{id}")
+    suspend fun cancelUpload(
+        @Path("username") username: String,
+        @Path("id") id: String,
+        @Query("remove") remove: Boolean,
+    )
 }

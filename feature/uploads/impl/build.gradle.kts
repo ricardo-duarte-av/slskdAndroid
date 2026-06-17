@@ -8,4 +8,5 @@ android {
 
 dependencies {
     api(projects.feature.uploads.api)
+    implementation(projects.core.model)
 }

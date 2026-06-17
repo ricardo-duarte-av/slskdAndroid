@@ -3,10 +3,10 @@ package com.slskdandroid.core.network.model
 import kotlinx.serialization.Serializable
 
 /**
- * slskd Transfers controller DTOs. `GET /api/v0/transfers/downloads` returns downloads grouped
- * by user, then by directory; the leaf [NetworkTransfer] objects carry per-file state/progress.
- * Field names mirror the slskd OpenAPI schema — verify against the live Swagger before relying
- * on them. See the project CLAUDE.md.
+ * slskd Transfers controller DTOs, shared by both directions. `GET /api/v0/transfers/downloads`
+ * and `.../uploads` return the same shape: transfers grouped by user, then by directory; the leaf
+ * [NetworkTransfer] objects carry per-file state/progress. Field names mirror the slskd OpenAPI
+ * schema — verify against the live Swagger before relying on them. See the project CLAUDE.md.
  */
 
 @Serializable
