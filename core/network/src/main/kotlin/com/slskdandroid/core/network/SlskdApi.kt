@@ -1,5 +1,7 @@
 package com.slskdandroid.core.network
 
+import com.slskdandroid.core.network.model.DirectoryContentsRequest
+import com.slskdandroid.core.network.model.NetworkDirectory
 import com.slskdandroid.core.network.model.NetworkSearch
 import com.slskdandroid.core.network.model.NetworkSearchResponse
 import com.slskdandroid.core.network.model.NetworkUserDownloads
@@ -9,6 +11,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -19,17 +22,31 @@ import retrofit2.http.Query
  */
 interface SlskdApi {
 
+    @GET("api/v0/searches")
+    suspend fun getSearches(): List<NetworkSearch>
+
     @POST("api/v0/searches")
     suspend fun startSearch(@Body request: StartSearchRequest): NetworkSearch
 
     @GET("api/v0/searches/{id}")
     suspend fun getSearch(@Path("id") id: String): NetworkSearch
 
+    /** Cancels (stops) an in-progress search without deleting it. */
+    @PUT("api/v0/searches/{id}")
+    suspend fun cancelSearch(@Path("id") id: String)
+
     @GET("api/v0/searches/{id}/responses")
     suspend fun getSearchResponses(@Path("id") id: String): List<NetworkSearchResponse>
 
     @DELETE("api/v0/searches/{id}")
     suspend fun deleteSearch(@Path("id") id: String)
+
+    /** Requests a peer's listing of a directory (used to expand a folder from a search result). */
+    @POST("api/v0/users/{username}/directory")
+    suspend fun getDirectoryContents(
+        @Path("username") username: String,
+        @Body request: DirectoryContentsRequest,
+    ): List<NetworkDirectory>
 
     /** All downloads, grouped by user then directory. slskd has no transfers push hub — poll this. */
     @GET("api/v0/transfers/downloads")

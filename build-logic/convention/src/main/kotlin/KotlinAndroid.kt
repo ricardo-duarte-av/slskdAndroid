@@ -20,10 +20,9 @@ internal fun Project.configureKotlinAndroid(
     tasks.withType<KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
-            freeCompilerArgs.addAll(
-                "-opt-in=kotlin.RequiresOptIn",
-                "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-            )
+            // No blanket coroutines opt-in: the marker isn't on coroutines-free modules' classpath
+            // (e.g. core:model), which warns. Opt in per-file with @OptIn where actually needed.
+            freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
         }
     }
 

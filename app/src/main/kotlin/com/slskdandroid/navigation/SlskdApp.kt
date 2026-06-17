@@ -14,7 +14,9 @@ import com.slskdandroid.feature.browse.impl.browseScreen
 import com.slskdandroid.feature.chat.impl.chatScreen
 import com.slskdandroid.feature.downloads.impl.downloadsScreen
 import com.slskdandroid.feature.rooms.impl.roomsScreen
-import com.slskdandroid.feature.search.impl.searchScreen
+import com.slskdandroid.feature.search.api.searchDetailRoute
+import com.slskdandroid.feature.search.impl.searchDetailScreen
+import com.slskdandroid.feature.search.impl.searchListScreen
 import com.slskdandroid.feature.uploads.impl.uploadsScreen
 import com.slskdandroid.feature.users.impl.usersScreen
 
@@ -31,7 +33,11 @@ fun SlskdApp(
     NavigationSuiteScaffold(
         navigationSuiteItems = {
             TopLevelDestination.entries.forEach { destination ->
-                val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                // Match by the leading route segment so nested routes (e.g. "search/{id}")
+                // keep their top-level tab highlighted.
+                val selected = currentDestination?.hierarchy?.any {
+                    it.route?.substringBefore('/') == destination.route
+                } == true
                 item(
                     selected = selected,
                     onClick = { navController.navigateToTopLevel(destination) },
@@ -45,7 +51,10 @@ fun SlskdApp(
             navController = navController,
             startDestination = TopLevelDestination.SEARCH.route,
         ) {
-            searchScreen()
+            searchListScreen(
+                onOpenSearch = { id -> navController.navigate(searchDetailRoute(id)) },
+            )
+            searchDetailScreen(onBack = { navController.popBackStack() })
             downloadsScreen()
             uploadsScreen()
             roomsScreen()

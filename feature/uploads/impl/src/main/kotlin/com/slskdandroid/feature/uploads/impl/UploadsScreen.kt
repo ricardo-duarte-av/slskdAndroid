@@ -215,6 +215,7 @@ private fun UploadsList(
                     fileCount = user.fileCount,
                     collapsed = collapsed,
                     onToggle = { onAction(UploadsAction.ToggleCollapse(user.username)) },
+                    modifier = Modifier.animateItem(),
                 )
             }
             if (!collapsed) {
@@ -233,6 +234,7 @@ private fun UploadsList(
                                     ),
                                 )
                             },
+                            modifier = Modifier.animateItem(),
                         )
                     }
                     if (!dirCollapsed) {
@@ -242,6 +244,7 @@ private fun UploadsList(
                                 selected = upload.id in uiState.selectedIds,
                                 inSelectionMode = uiState.inSelectionMode,
                                 onAction = onAction,
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
@@ -257,9 +260,10 @@ private fun PeerHeader(
     fileCount: Int,
     collapsed: Boolean,
     onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -284,9 +288,10 @@ private fun DirectoryHeader(
     directory: String,
     collapsed: Boolean,
     onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
             .padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
@@ -320,12 +325,13 @@ private fun UploadRow(
     selected: Boolean,
     inSelectionMode: Boolean,
     onAction: (UploadsAction) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val background =
         if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = {

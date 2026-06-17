@@ -21,4 +21,7 @@ interface DownloadsRepository {
 
     /** Re-enqueues [download] (by its filename + size) to retry a failed or cancelled transfer. */
     suspend fun retry(download: Download)
+
+    /** Enqueues a download of [filename] (of [sizeBytes]) from [username]; used from search results. */
+    suspend fun enqueue(username: String, filename: String, sizeBytes: Long)
 }

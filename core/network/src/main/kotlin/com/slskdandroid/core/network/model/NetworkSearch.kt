@@ -18,11 +18,14 @@ data class StartSearchRequest(
 data class NetworkSearch(
     val id: String,
     val searchText: String,
+    // `state` is a SearchStates flags enum serialized as a string, e.g. "Completed, ResponseLimitReached".
+    val state: String = "",
     val isComplete: Boolean = false,
     val responseCount: Int = 0,
     val fileCount: Int = 0,
-    // `state` (a SearchStates flags enum) is intentionally omitted — its JSON form varies and
-    // completion is read from `isComplete`. Unknown keys are ignored by the Json config.
+    val lockedFileCount: Int = 0,
+    val startedAt: String? = null,
+    val endedAt: String? = null,
 )
 
 @Serializable
@@ -31,7 +34,10 @@ data class NetworkSearchResponse(
     val hasFreeUploadSlot: Boolean = false,
     val uploadSpeed: Long = 0,
     val queueLength: Long = 0,
+    val fileCount: Int = 0,
+    val lockedFileCount: Int = 0,
     val files: List<NetworkFile> = emptyList(),
+    val lockedFiles: List<NetworkFile> = emptyList(),
 )
 
 @Serializable
@@ -39,5 +45,10 @@ data class NetworkFile(
     val filename: String,
     val size: Long = 0,
     val bitRate: Int? = null,
+    val bitDepth: Int? = null,
+    val sampleRate: Int? = null,
     val length: Int? = null,
+    val isVariableBitRate: Boolean? = null,
+    val extension: String? = null,
+    val isLocked: Boolean = false,
 )

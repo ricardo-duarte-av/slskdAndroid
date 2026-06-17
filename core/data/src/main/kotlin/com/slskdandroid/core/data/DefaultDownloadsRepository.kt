@@ -45,11 +45,12 @@ internal class DefaultDownloadsRepository @Inject constructor(
     }
 
     override suspend fun retry(download: Download) {
+        enqueue(download.username, download.filename, download.sizeBytes)
+    }
+
+    override suspend fun enqueue(username: String, filename: String, sizeBytes: Long) {
         withContext(ioDispatcher) {
-            api.enqueueDownloads(
-                username = download.username,
-                files = listOf(QueueDownloadRequest(download.filename, download.sizeBytes)),
-            )
+            api.enqueueDownloads(username, listOf(QueueDownloadRequest(filename, sizeBytes)))
         }
     }
 }
