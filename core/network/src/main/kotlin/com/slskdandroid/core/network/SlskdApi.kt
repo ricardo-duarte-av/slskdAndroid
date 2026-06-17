@@ -1,6 +1,7 @@
 package com.slskdandroid.core.network
 
 import com.slskdandroid.core.network.model.DirectoryContentsRequest
+import com.slskdandroid.core.network.model.NetworkBrowseResponse
 import com.slskdandroid.core.network.model.NetworkDirectory
 import com.slskdandroid.core.network.model.NetworkSearch
 import com.slskdandroid.core.network.model.NetworkSearchResponse
@@ -47,6 +48,14 @@ interface SlskdApi {
         @Path("username") username: String,
         @Body request: DirectoryContentsRequest,
     ): List<NetworkDirectory>
+
+    /** Browses a peer's entire share. Blocks until the share is fetched (can be slow/large). */
+    @GET("api/v0/users/{username}/browse")
+    suspend fun getBrowse(@Path("username") username: String): NetworkBrowseResponse
+
+    /** Percent (0–100) of the in-progress browse for [username]; 404 once none is running. */
+    @GET("api/v0/users/{username}/browse/status")
+    suspend fun getBrowseStatus(@Path("username") username: String): Double
 
     /** All downloads, grouped by user then directory. slskd has no transfers push hub — poll this. */
     @GET("api/v0/transfers/downloads")

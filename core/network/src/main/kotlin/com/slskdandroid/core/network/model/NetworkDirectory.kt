@@ -9,11 +9,22 @@ data class DirectoryContentsRequest(
 )
 
 /**
- * One directory in a peer's browse/directory-contents response. The endpoint returns a list of
- * these (the requested root first); [files] carry base filenames (no directory prefix).
+ * One directory in a peer's browse/directory-contents response. [files] carry base filenames
+ * (no directory prefix).
  */
 @Serializable
 data class NetworkDirectory(
     val name: String = "",
     val files: List<NetworkFile> = emptyList(),
+)
+
+/**
+ * Wrapper returned by `GET /users/{username}/browse` (Soulseek's `BrowseResponse`): an object with
+ * the share's directories. Note this differs from the directory-contents endpoint, which returns a
+ * bare array.
+ */
+@Serializable
+data class NetworkBrowseResponse(
+    val directories: List<NetworkDirectory> = emptyList(),
+    val lockedDirectories: List<NetworkDirectory> = emptyList(),
 )

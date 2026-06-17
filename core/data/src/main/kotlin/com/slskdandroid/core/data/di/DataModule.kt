@@ -2,6 +2,8 @@ package com.slskdandroid.core.data.di
 
 import com.slskdandroid.core.data.ConnectionSettingsRepository
 import com.slskdandroid.core.data.DefaultConnectionSettingsRepository
+import com.slskdandroid.core.data.BrowseRepository
+import com.slskdandroid.core.data.DefaultBrowseRepository
 import com.slskdandroid.core.data.DefaultDownloadsRepository
 import com.slskdandroid.core.data.DefaultSearchRepository
 import com.slskdandroid.core.data.DefaultUploadsRepository
@@ -29,6 +31,10 @@ internal interface DataModule {
     @Binds
     @Singleton
     fun bindsUploadsRepository(impl: DefaultUploadsRepository): UploadsRepository
+
+    @Binds
+    @Singleton
+    fun bindsBrowseRepository(impl: DefaultBrowseRepository): BrowseRepository
 
     @Binds
     @Singleton
