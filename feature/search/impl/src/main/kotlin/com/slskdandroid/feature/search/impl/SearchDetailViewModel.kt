@@ -4,18 +4,20 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.DownloadsRepository
+import com.slskdandroid.core.data.SearchProgress
 import com.slskdandroid.core.data.SearchRepository
 import com.slskdandroid.core.model.SearchResponse
 import com.slskdandroid.core.model.SearchResultFile
 import com.slskdandroid.feature.search.api.SEARCH_ID_ARG
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,12 +35,18 @@ class SearchDetailViewModel @Inject constructor(
     private val searchId: String = checkNotNull(savedStateHandle[SEARCH_ID_ARG])
 
     private val searchText = MutableStateFlow("")
-    private val base = MutableStateFlow<BaseLoad>(BaseLoad.Loading)
     private val options = MutableStateFlow(SearchOptions.Default)
     private val interaction = MutableStateFlow(Interaction())
 
+    // Streams (and reconciles) the search's responses over the hub only while the screen is
+    // subscribed, so the SignalR connection isn't held open off-screen.
+    private val baseFlow: Flow<BaseLoad> = searchRepository.observeSearch(searchId)
+        .map<SearchProgress, BaseLoad> { BaseLoad.Loaded(it.responses, it.isComplete) }
+        .catch { emit(BaseLoad.Error(it.message ?: "Couldn't load results")) }
+        .onStart { emit(BaseLoad.Loading) }
+
     val uiState: StateFlow<SearchDetailUiState> =
-        combine(searchText, base, options, interaction) { text, baseLoad, opts, inter ->
+        combine(searchText, baseFlow, options, interaction) { text, baseLoad, opts, inter ->
             SearchDetailUiState(
                 searchText = text,
                 options = opts,
@@ -53,15 +61,11 @@ class SearchDetailViewModel @Inject constructor(
         )
 
     init {
+        // Header text only — a single call, independent of the result stream.
         viewModelScope.launch {
             runCatching { searchRepository.getSearch(searchId) }
                 .onSuccess { searchText.value = it.searchText }
         }
-
-        searchRepository.observeSearch(searchId)
-            .onEach { base.value = BaseLoad.Loaded(it.responses, it.isComplete) }
-            .catch { base.value = BaseLoad.Error(it.message ?: "Couldn't load results") }
-            .launchIn(viewModelScope)
     }
 
     fun onAction(action: SearchDetailAction) {

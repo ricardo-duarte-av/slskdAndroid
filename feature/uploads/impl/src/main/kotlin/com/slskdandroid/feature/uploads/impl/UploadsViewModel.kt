@@ -7,12 +7,13 @@ import com.slskdandroid.core.model.Upload
 import com.slskdandroid.core.model.UploadState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -24,34 +25,44 @@ class UploadsViewModel @Inject constructor(
     private val uploadsRepository: UploadsRepository,
 ) : ViewModel() {
 
+    // Latest list, cached for action handlers. Updated only while the screen is subscribed (the
+    // polling flow below is part of the uiState chain), so nothing polls off-screen.
     private val uploads = MutableStateFlow<List<Upload>>(emptyList())
-    private val loadState = MutableStateFlow<LoadState>(LoadState.Loading)
     private val selectedIds = MutableStateFlow<Set<String>>(emptySet())
     private val collapsedUsers = MutableStateFlow<Set<String>>(emptySet())
     private val collapsedDirectories = MutableStateFlow<Set<String>>(emptySet())
 
+    private val loadResult: Flow<LoadResult> = uploadsRepository.uploads()
+        .onEach { uploads.value = it }
+        .map<List<Upload>, LoadResult> { LoadResult.Data(it) }
+        .catch { emit(LoadResult.Failure(it.message ?: "Couldn't load uploads")) }
+
     val uiState: StateFlow<UploadsUiState> =
         combine(
-            loadState,
-            uploads,
+            loadResult,
             selectedIds,
             collapsedUsers,
             collapsedDirectories,
-        ) { load, ups, selected, collapsedU, collapsedD ->
-            // Drop selections for uploads that have since vanished from the list.
-            val present = selected.intersect(ups.mapTo(HashSet()) { it.id })
-            UploadsUiState(load, ups.groupByUser(), present, collapsedU, collapsedD)
+        ) { result, selected, collapsedU, collapsedD ->
+            when (result) {
+                is LoadResult.Data -> {
+                    // Drop selections for uploads that have since vanished from the list.
+                    val present = selected.intersect(result.uploads.mapTo(HashSet()) { it.id })
+                    UploadsUiState(LoadState.Loaded, result.uploads.groupByUser(), present, collapsedU, collapsedD)
+                }
+
+                is LoadResult.Failure ->
+                    UploadsUiState(LoadState.Error(result.message), emptyList(), selected, collapsedU, collapsedD)
+            }
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = UploadsUiState.Initial,
         )
 
-    init {
-        uploadsRepository.uploads()
-            .onEach { uploads.value = it; loadState.value = LoadState.Loaded }
-            .catch { loadState.value = LoadState.Error(it.message ?: "Couldn't load uploads") }
-            .launchIn(viewModelScope)
+    private sealed interface LoadResult {
+        data class Data(val uploads: List<Upload>) : LoadResult
+        data class Failure(val message: String) : LoadResult
     }
 
     fun onAction(action: UploadsAction) {
