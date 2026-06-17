@@ -8,4 +8,5 @@ android {
 
 dependencies {
     api(projects.feature.downloads.api)
+    implementation(projects.core.model)
 }

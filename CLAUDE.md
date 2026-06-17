@@ -66,6 +66,8 @@ ViewModel exposes a single `StateFlow<UiState>` and a `onAction(action)` entry p
 
 ## Build & test
 
+**Do not run Gradle builds (`assembleDebug`, etc.) — the user compiles and runs the app themselves.** Write the code and stop; don't invoke the wrapper to "verify" unless explicitly asked. The commands below are for reference / for the user.
+
 Use the Gradle wrapper (`./gradlew`). All of these are verified working:
 
 - **Build APK:** `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`

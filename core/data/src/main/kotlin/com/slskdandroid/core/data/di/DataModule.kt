@@ -2,7 +2,9 @@ package com.slskdandroid.core.data.di
 
 import com.slskdandroid.core.data.ConnectionSettingsRepository
 import com.slskdandroid.core.data.DefaultConnectionSettingsRepository
+import com.slskdandroid.core.data.DefaultDownloadsRepository
 import com.slskdandroid.core.data.DefaultSearchRepository
+import com.slskdandroid.core.data.DownloadsRepository
 import com.slskdandroid.core.data.SearchRepository
 import dagger.Binds
 import dagger.Module
@@ -17,6 +19,10 @@ internal interface DataModule {
     @Binds
     @Singleton
     fun bindsSearchRepository(impl: DefaultSearchRepository): SearchRepository
+
+    @Binds
+    @Singleton
+    fun bindsDownloadsRepository(impl: DefaultDownloadsRepository): DownloadsRepository
 
     @Binds
     @Singleton
