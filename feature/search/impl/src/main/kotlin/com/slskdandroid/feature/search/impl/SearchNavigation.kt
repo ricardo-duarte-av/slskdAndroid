@@ -15,11 +15,14 @@ fun NavGraphBuilder.searchListScreen(onOpenSearch: (String) -> Unit) {
 }
 
 /** Wires the per-search detail route into an app-level [NavGraphBuilder]. */
-fun NavGraphBuilder.searchDetailScreen(onBack: () -> Unit) {
+fun NavGraphBuilder.searchDetailScreen(
+    onBack: () -> Unit,
+    onBrowseUser: (String) -> Unit,
+) {
     composable(
         route = SEARCH_DETAIL_ROUTE,
         arguments = listOf(navArgument("searchId") { type = NavType.StringType }),
     ) {
-        SearchDetailRoute(onBack = onBack)
+        SearchDetailRoute(onBack = onBack, onBrowseUser = onBrowseUser)
     }
 }

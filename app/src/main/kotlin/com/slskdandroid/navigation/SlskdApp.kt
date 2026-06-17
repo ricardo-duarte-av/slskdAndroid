@@ -10,6 +10,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.slskdandroid.feature.browse.api.browseUserRoute
 import com.slskdandroid.feature.browse.impl.browseScreen
 import com.slskdandroid.feature.chat.impl.chatScreen
 import com.slskdandroid.feature.downloads.impl.downloadsScreen
@@ -51,12 +52,16 @@ fun SlskdApp(
             navController = navController,
             startDestination = TopLevelDestination.SEARCH.route,
         ) {
+            val onBrowseUser: (String) -> Unit = { user -> navController.navigate(browseUserRoute(user)) }
             searchListScreen(
                 onOpenSearch = { id -> navController.navigate(searchDetailRoute(id)) },
             )
-            searchDetailScreen(onBack = { navController.popBackStack() })
-            downloadsScreen()
-            uploadsScreen()
+            searchDetailScreen(
+                onBack = { navController.popBackStack() },
+                onBrowseUser = onBrowseUser,
+            )
+            downloadsScreen(onBrowseUser = onBrowseUser)
+            uploadsScreen(onBrowseUser = onBrowseUser)
             roomsScreen()
             chatScreen()
             usersScreen()

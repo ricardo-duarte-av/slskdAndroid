@@ -5,8 +5,8 @@ import androidx.navigation.compose.composable
 import com.slskdandroid.feature.downloads.api.DOWNLOADS_ROUTE
 
 /** Wires the Downloads route into an app-level [NavGraphBuilder]. */
-fun NavGraphBuilder.downloadsScreen() {
+fun NavGraphBuilder.downloadsScreen(onBrowseUser: (String) -> Unit) {
     composable(route = DOWNLOADS_ROUTE) {
-        DownloadsRoute()
+        DownloadsRoute(onBrowseUser = onBrowseUser)
     }
 }

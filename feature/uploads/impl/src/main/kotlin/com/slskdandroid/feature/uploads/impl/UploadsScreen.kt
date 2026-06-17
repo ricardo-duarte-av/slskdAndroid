@@ -24,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
@@ -31,6 +32,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -56,10 +58,11 @@ import java.util.Locale
 
 @Composable
 internal fun UploadsRoute(
+    onBrowseUser: (String) -> Unit,
     viewModel: UploadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    UploadsScreen(uiState = uiState, onAction = viewModel::onAction)
+    UploadsScreen(uiState = uiState, onAction = viewModel::onAction, onBrowseUser = onBrowseUser)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +70,7 @@ internal fun UploadsRoute(
 internal fun UploadsScreen(
     uiState: UploadsUiState,
     onAction: (UploadsAction) -> Unit,
+    onBrowseUser: (String) -> Unit,
 ) {
     // While selecting, system back clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(UploadsAction.ClearSelection) }
@@ -97,7 +101,7 @@ internal fun UploadsScreen(
                     if (uiState.users.isEmpty()) {
                         CenteredMessage("No uploads. Peers' requests for your shared files appear here.")
                     } else {
-                        UploadsList(uiState, onAction)
+                        UploadsList(uiState, onAction, onBrowseUser)
                     }
             }
         }
@@ -202,6 +206,7 @@ private fun CenteredMessage(
 private fun UploadsList(
     uiState: UploadsUiState,
     onAction: (UploadsAction) -> Unit,
+    onBrowseUser: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -215,6 +220,7 @@ private fun UploadsList(
                     fileCount = user.fileCount,
                     collapsed = collapsed,
                     onToggle = { onAction(UploadsAction.ToggleCollapse(user.username)) },
+                    onBrowseUser = onBrowseUser,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -260,13 +266,14 @@ private fun PeerHeader(
     fileCount: Int,
     collapsed: Boolean,
     onToggle: () -> Unit,
+    onBrowseUser: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -279,7 +286,29 @@ private fun PeerHeader(
             "$username · $fileCount files",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
         )
+        PeerOverflowMenu(username, onBrowseUser)
+    }
+}
+
+/** Per-peer overflow actions. "Message user" (chat DM) will join "Browse user" here later. */
+@Composable
+private fun PeerOverflowMenu(username: String, onBrowseUser: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Browse user") },
+                onClick = {
+                    expanded = false
+                    onBrowseUser(username)
+                },
+            )
+        }
     }
 }
 

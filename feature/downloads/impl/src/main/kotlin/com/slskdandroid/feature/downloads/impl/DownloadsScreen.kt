@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -56,10 +57,11 @@ import java.util.Locale
 
 @Composable
 internal fun DownloadsRoute(
+    onBrowseUser: (String) -> Unit,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DownloadsScreen(uiState = uiState, onAction = viewModel::onAction)
+    DownloadsScreen(uiState = uiState, onAction = viewModel::onAction, onBrowseUser = onBrowseUser)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +69,7 @@ internal fun DownloadsRoute(
 internal fun DownloadsScreen(
     uiState: DownloadsUiState,
     onAction: (DownloadsAction) -> Unit,
+    onBrowseUser: (String) -> Unit,
 ) {
     // While selecting, a system back press clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(DownloadsAction.ClearSelection) }
@@ -100,7 +103,7 @@ internal fun DownloadsScreen(
                     if (uiState.users.isEmpty()) {
                         CenteredMessage("No downloads yet. Queue files from Search.")
                     } else {
-                        DownloadsList(uiState, onAction)
+                        DownloadsList(uiState, onAction, onBrowseUser)
                     }
             }
         }
@@ -214,6 +217,7 @@ private fun CenteredMessage(
 private fun DownloadsList(
     uiState: DownloadsUiState,
     onAction: (DownloadsAction) -> Unit,
+    onBrowseUser: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -227,6 +231,7 @@ private fun DownloadsList(
                     fileCount = user.fileCount,
                     collapsed = collapsed,
                     onToggle = { onAction(DownloadsAction.ToggleCollapse(user.username)) },
+                    onBrowseUser = onBrowseUser,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -272,13 +277,14 @@ private fun PeerHeader(
     fileCount: Int,
     collapsed: Boolean,
     onToggle: () -> Unit,
+    onBrowseUser: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -295,7 +301,29 @@ private fun PeerHeader(
             "$username · $fileCount files",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
         )
+        PeerOverflowMenu(username, onBrowseUser)
+    }
+}
+
+/** Per-peer overflow actions. "Message user" (chat DM) will join "Browse user" here later. */
+@Composable
+private fun PeerOverflowMenu(username: String, onBrowseUser: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Browse user") },
+                onClick = {
+                    expanded = false
+                    onBrowseUser(username)
+                },
+            )
+        }
     }
 }
 

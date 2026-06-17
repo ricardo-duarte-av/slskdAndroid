@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -65,10 +66,16 @@ private const val PAGE_SIZE = 5
 @Composable
 internal fun SearchDetailRoute(
     onBack: () -> Unit,
+    onBrowseUser: (String) -> Unit,
     viewModel: SearchDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    SearchDetailScreen(uiState = uiState, onAction = viewModel::onAction, onBack = onBack)
+    SearchDetailScreen(
+        uiState = uiState,
+        onAction = viewModel::onAction,
+        onBack = onBack,
+        onBrowseUser = onBrowseUser,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,6 +84,7 @@ internal fun SearchDetailScreen(
     uiState: SearchDetailUiState,
     onAction: (SearchDetailAction) -> Unit,
     onBack: () -> Unit,
+    onBrowseUser: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -116,7 +124,7 @@ internal fun SearchDetailScreen(
                     if (!phase.isComplete) {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    LoadedResults(phase, uiState.options, onAction)
+                    LoadedResults(phase, uiState.options, onAction, onBrowseUser)
                 }
             }
         }
@@ -152,6 +160,7 @@ private fun LoadedResults(
     phase: Phase.Loaded,
     options: SearchOptions,
     onAction: (SearchDetailAction) -> Unit,
+    onBrowseUser: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -170,6 +179,7 @@ private fun LoadedResults(
                 PeerHeader(
                     response = response,
                     onToggle = { onAction(SearchDetailAction.TogglePeer(response.username)) },
+                    onBrowseUser = onBrowseUser,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -286,13 +296,14 @@ private fun ToggleRow(label: String, checked: Boolean, onToggle: () -> Unit) {
 private fun PeerHeader(
     response: ShownResponse,
     onToggle: () -> Unit,
+    onBrowseUser: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onToggle)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -308,7 +319,29 @@ private fun PeerHeader(
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
+        PeerOverflowMenu(response.username, onBrowseUser)
+    }
+}
+
+/** Per-peer overflow actions. "Message user" (chat DM) will join "Browse user" here later. */
+@Composable
+private fun PeerOverflowMenu(username: String, onBrowseUser: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Browse user") },
+                onClick = {
+                    expanded = false
+                    onBrowseUser(username)
+                },
+            )
+        }
     }
 }
 
