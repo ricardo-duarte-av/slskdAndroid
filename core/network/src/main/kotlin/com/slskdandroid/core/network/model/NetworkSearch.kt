@@ -21,7 +21,8 @@ data class NetworkSearch(
     val isComplete: Boolean = false,
     val responseCount: Int = 0,
     val fileCount: Int = 0,
-    val state: String? = null,
+    // `state` (a SearchStates flags enum) is intentionally omitted — its JSON form varies and
+    // completion is read from `isComplete`. Unknown keys are ignored by the Json config.
 )
 
 @Serializable

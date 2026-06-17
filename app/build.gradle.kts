@@ -8,7 +8,7 @@ android {
     namespace = "com.slskdandroid"
 
     defaultConfig {
-        applicationId = "pt.aguiarvieira.androidslksd"
+        applicationId = "pt.aguiarvieira.androidslskd"
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -31,6 +31,12 @@ android {
 dependencies {
     implementation(projects.feature.search.impl)
     implementation(projects.feature.connection.impl)
+    implementation(projects.feature.downloads.impl)
+    implementation(projects.feature.uploads.impl)
+    implementation(projects.feature.rooms.impl)
+    implementation(projects.feature.chat.impl)
+    implementation(projects.feature.users.impl)
+    implementation(projects.feature.browse.impl)
 
     implementation(projects.core.designsystem)
     implementation(projects.core.data)

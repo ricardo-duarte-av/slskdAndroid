@@ -4,8 +4,13 @@ import com.slskdandroid.core.model.SearchResponse
 
 sealed interface SearchUiState {
     data object Idle : SearchUiState
-    data object Loading : SearchUiState
-    data class Success(val responses: List<SearchResponse>) : SearchUiState
+
+    /** A search is running. [responses] grows as peers reply; empty until the first arrives. */
+    data class Searching(val responses: List<SearchResponse>) : SearchUiState
+
+    /** The search finished with its final set of [responses]. */
+    data class Complete(val responses: List<SearchResponse>) : SearchUiState
+
     data class Error(val message: String) : SearchUiState
 }
 

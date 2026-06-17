@@ -11,19 +11,15 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.slskdandroid.core.designsystem.theme.SlskdTheme
 import com.slskdandroid.feature.connection.api.CONNECTION_SETUP_ROUTE
 import com.slskdandroid.feature.connection.impl.connectionSetupScreen
-import com.slskdandroid.feature.search.api.SEARCH_ROUTE
-import com.slskdandroid.feature.search.api.navigateToSearch
-import com.slskdandroid.feature.search.impl.searchScreen
+import com.slskdandroid.navigation.SlskdApp
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -40,10 +36,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    when (val state = viewModel.uiState.collectAsStateWithLifecycle().value) {
+                    when (viewModel.uiState.collectAsStateWithLifecycle().value) {
                         MainUiState.Loading -> LoadingScreen()
-                        MainUiState.NotConfigured -> SlskdNavHost(startConfigured = false)
-                        MainUiState.Configured -> SlskdNavHost(startConfigured = true)
+                        MainUiState.NotConfigured -> ConnectionSetupGate()
+                        MainUiState.Configured -> SlskdApp()
                     }
                 }
             }
@@ -58,24 +54,17 @@ private fun LoadingScreen() {
     }
 }
 
+/**
+ * Mandatory connection-setup flow shown when no connection is configured. Once verified,
+ * [MainViewModel]'s state flips to Configured and the app shell ([SlskdApp]) takes over.
+ */
 @Composable
-private fun SlskdNavHost(
-    startConfigured: Boolean,
-    navController: NavHostController = rememberNavController(),
-) {
+private fun ConnectionSetupGate() {
+    val navController = rememberNavController()
     NavHost(
         navController = navController,
-        startDestination = if (startConfigured) SEARCH_ROUTE else CONNECTION_SETUP_ROUTE,
+        startDestination = CONNECTION_SETUP_ROUTE,
     ) {
-        connectionSetupScreen(
-            onConnectionEstablished = {
-                navController.navigateToSearch(
-                    navOptions = androidx.navigation.navOptions {
-                        popUpTo(CONNECTION_SETUP_ROUTE) { inclusive = true }
-                    },
-                )
-            },
-        )
-        searchScreen()
+        connectionSetupScreen(onConnectionEstablished = { /* MainViewModel drives the switch */ })
     }
 }

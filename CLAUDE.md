@@ -32,7 +32,11 @@ There is **no username/password login** — the app authenticates with an slskd 
 
 - Persistence: `core:datastore` (Preferences DataStore, file `slskd_connection`).
 - Dynamic targeting: Retrofit is built with a **placeholder base URL**; `SlskdAuthInterceptor` rewrites scheme/host/port per request from `SlskdConnectionState.current` and adds the API key. `SlskdConnectionState` is a `@Singleton` mutable holder kept in sync with persisted settings by the repository (via an `@ApplicationScope` collector). Networking fails fast if unconfigured.
-- `applicationId` is `pt.aguiarvieira.androidslksd` (debug builds get a `.debug` suffix). The source `namespace`/packages remain `com.slskdandroid`.
+- `applicationId` is `pt.aguiarvieira.androidslskd` (debug builds get a `.debug` suffix). The source `namespace`/packages remain `com.slskdandroid`.
+
+## Live search
+
+`SearchRepository.search(query)` returns a `Flow<SearchProgress>` (not a one-shot list): it POSTs the search over REST to get an id, then streams the search hub's `RESPONSE` events via `SlskdSearchHub` (filtered by id), accumulating responses **keyed by username** and emitting a growing list. On the hub's `UPDATE`/`isComplete` event it reconciles with a final REST `getSearchResponses` fetch — which backfills any responses that arrived before the hub connection was established — then completes. The UI (`SearchUiState.Searching`/`Complete`) shows incremental results with a live progress bar.
 
 ## Understanding slskd (you will need to browse this)
 
@@ -40,7 +44,8 @@ The app is meaningless without matching slskd's contract. When implementing netw
 
 - **Repo:** https://github.com/slskd/slskd
 - **REST API:** slskd serves an OpenAPI/Swagger spec from a running instance (typically `http://<host>:5030/swagger`). The API source lives under `src/slskd/**/API/Controllers` in the repo. Endpoints cover searches, transfers (downloads/uploads), browsing peer shares, rooms/chat, and server/session state.
-- **Real-time:** slskd pushes live updates (search responses, transfer progress, chat) over **SignalR** hubs (ASP.NET Core's WebSocket layer), not plain WebSockets. Browse the `Hubs` in the slskd source to learn hub names, methods, and event payloads. The Android client needs a SignalR client (e.g. `com.microsoft.signalr`) — a raw OkHttp WebSocket is not sufficient.
+- **Real-time:** slskd pushes live updates over **SignalR** hubs (ASP.NET Core's WebSocket layer), not plain WebSockets, mounted under `/hub/<name>` (e.g. `/hub/search`). The Android client uses `com.microsoft.signalr` — a raw OkHttp WebSocket is not sufficient. Hubs authorize under `AuthPolicy.Any`, so the **`X-API-Key` header** authenticates the connection (set via `HubConnectionBuilder…withHeader`). **The Java SignalR client deserializes payloads with Gson, not kotlinx.serialization** — keep separate Gson-friendly wire types (nullable fields, camelCase names) for hub events; see `SearchHubEvent.kt`.
+  - **Search hub** (`src/slskd/Search/API/Hubs/SearchHub.cs`): server→client methods `LIST` (all searches on connect), `CREATE`, `UPDATE` (a `Search`; `isComplete` is a serialized bool), `RESPONSE` (`{ searchId, response }`), `DELETE`. All broadcast to every client, so filter by `searchId`. Browse other `Hubs` (transfers, logs, application) the same way for those features.
 - **Auth:** slskd uses API keys and/or JWT bearer tokens obtained from a login endpoint. Confirm the current scheme against the repo before implementing auth.
 
 Use WebFetch on the above (or the live Swagger JSON of a configured instance) to confirm exact paths, request/response shapes, and hub method names before writing networking code — these change between slskd releases.
@@ -51,7 +56,8 @@ Follow Google's official architecture guidance, as demonstrated by [NowInAndroid
 
 - **Offline-first**: a local source of truth (Room/DataStore) where it makes sense (e.g. saved searches, transfer history, server config). Live transfer/search state may be ephemeral and SignalR-driven rather than persisted — decide per feature.
 - **Unidirectional data flow**: events down, immutable state up via Kotlin `Flow`/`StateFlow`.
-- **Module layout**: `app/` (navigation + scaffolding), `feature:<name>:{api,impl}`, and `core:*`. Currently present: `app`, `core:{model,common,designsystem,datastore,network,data}`, `feature:{search,connection}:{api,impl}`. Add `core:database`/`core:ui` as features need them. The slskd REST + SignalR clients belong in `core:network`; mapping to domain models and exposing `Flow`s belongs in `core:data` repositories. Base package is `com.slskdandroid`.
+- **Module layout**: `app/` (navigation + scaffolding), `feature:<name>:{api,impl}`, and `core:*`. Currently present: `app`, `core:{model,common,designsystem,datastore,network,data}`, and `feature:{search,connection,downloads,uploads,rooms,chat,users,browse}:{api,impl}`. Add `core:database`/`core:ui` as features need them.
+- **Top-level navigation**: the 7 sections (Search, Downloads, Uploads, Rooms, Chat, Users, Browse) are driven by `app/navigation/SlskdApp.kt` using Material 3 **`NavigationSuiteScaffold`** (adaptive: bottom bar on compact, rail on medium, drawer on expanded). Each `feature:*:api` exposes a `<X>_ROUTE` constant; each `impl` exposes a `NavGraphBuilder.<x>Screen()` extension wired into the app's `NavHost`. `TopLevelDestination` (enum) maps route → label → icon. Most tabs are `PlaceholderScreen` (from `core:designsystem`) pending build-out; **Search** is the only fully-implemented one. The shell only renders once a connection is configured (the connection gate in `MainActivity`). The slskd REST + SignalR clients belong in `core:network`; mapping to domain models and exposing `Flow`s belongs in `core:data` repositories. Base package is `com.slskdandroid`.
 - **Convention plugins** in `build-logic/convention/` (`slskd.android.application[.compose]`, `slskd.android.library[.compose]`, `slskd.android.feature`, `slskd.hilt`) own all shared build config. New modules apply these aliases (e.g. `alias(libs.plugins.slskd.android.feature)`) rather than configuring AGP/Kotlin directly.
 - **Material 3 Expressive theming** lives in `core:designsystem` — keep theme, dynamic color, motion specs, and shared components there; feature modules consume them and never define their own colors/shapes.
 
