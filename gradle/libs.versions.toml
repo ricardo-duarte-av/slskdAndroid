@@ -9,6 +9,7 @@ androidGradlePlugin = "9.2.1"
 kotlin = "2.4.0"
 ksp = "2.3.9"
 hilt = "2.59.2"
+gradlePlayPublisher = "3.12.1"
 
 # Kotlinx
 kotlinxCoroutines = "1.11.0"
@@ -101,6 +102,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+play-publisher = { id = "com.github.triplet.play", version.ref = "gradlePlayPublisher" }
 
 # Convention plugins (defined in build-logic)
 slskd-android-application = { id = "slskd.android.application", version = "unspecified" }
