@@ -58,10 +58,16 @@ import java.util.Locale
 @Composable
 internal fun DownloadsRoute(
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    DownloadsScreen(uiState = uiState, onAction = viewModel::onAction, onBrowseUser = onBrowseUser)
+    DownloadsScreen(
+        uiState = uiState,
+        onAction = viewModel::onAction,
+        onBrowseUser = onBrowseUser,
+        onUserInfo = onUserInfo,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +76,7 @@ internal fun DownloadsScreen(
     uiState: DownloadsUiState,
     onAction: (DownloadsAction) -> Unit,
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
 ) {
     // While selecting, a system back press clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(DownloadsAction.ClearSelection) }
@@ -103,7 +110,7 @@ internal fun DownloadsScreen(
                     if (uiState.users.isEmpty()) {
                         CenteredMessage("No downloads yet. Queue files from Search.")
                     } else {
-                        DownloadsList(uiState, onAction, onBrowseUser)
+                        DownloadsList(uiState, onAction, onBrowseUser, onUserInfo)
                     }
             }
         }
@@ -218,6 +225,7 @@ private fun DownloadsList(
     uiState: DownloadsUiState,
     onAction: (DownloadsAction) -> Unit,
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -232,6 +240,7 @@ private fun DownloadsList(
                     collapsed = collapsed,
                     onToggle = { onAction(DownloadsAction.ToggleCollapse(user.username)) },
                     onBrowseUser = onBrowseUser,
+                    onUserInfo = onUserInfo,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -278,6 +287,7 @@ private fun PeerHeader(
     collapsed: Boolean,
     onToggle: () -> Unit,
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -303,19 +313,30 @@ private fun PeerHeader(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
         )
-        PeerOverflowMenu(username, onBrowseUser)
+        PeerOverflowMenu(username, onBrowseUser, onUserInfo)
     }
 }
 
-/** Per-peer overflow actions. "Message user" (chat DM) will join "Browse user" here later. */
+/** Per-peer overflow actions. "Message user" (chat DM) will join these here later. */
 @Composable
-private fun PeerOverflowMenu(username: String, onBrowseUser: (String) -> Unit) {
+private fun PeerOverflowMenu(
+    username: String,
+    onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Info") },
+                onClick = {
+                    expanded = false
+                    onUserInfo(username)
+                },
+            )
             DropdownMenuItem(
                 text = { Text("Browse user") },
                 onClick = {

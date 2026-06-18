@@ -7,9 +7,11 @@ import com.slskdandroid.core.data.DefaultBrowseRepository
 import com.slskdandroid.core.data.DefaultDownloadsRepository
 import com.slskdandroid.core.data.DefaultSearchRepository
 import com.slskdandroid.core.data.DefaultUploadsRepository
+import com.slskdandroid.core.data.DefaultUsersRepository
 import com.slskdandroid.core.data.DownloadsRepository
 import com.slskdandroid.core.data.SearchRepository
 import com.slskdandroid.core.data.UploadsRepository
+import com.slskdandroid.core.data.UsersRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -35,6 +37,10 @@ internal interface DataModule {
     @Binds
     @Singleton
     fun bindsBrowseRepository(impl: DefaultBrowseRepository): BrowseRepository
+
+    @Binds
+    @Singleton
+    fun bindsUsersRepository(impl: DefaultUsersRepository): UsersRepository
 
     @Binds
     @Singleton

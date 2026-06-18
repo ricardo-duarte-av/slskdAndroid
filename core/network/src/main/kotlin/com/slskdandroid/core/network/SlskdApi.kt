@@ -6,6 +6,9 @@ import com.slskdandroid.core.network.model.NetworkDirectory
 import com.slskdandroid.core.network.model.NetworkSearch
 import com.slskdandroid.core.network.model.NetworkSearchResponse
 import com.slskdandroid.core.network.model.NetworkUserDownloads
+import com.slskdandroid.core.network.model.NetworkUserEndpoint
+import com.slskdandroid.core.network.model.NetworkUserInfo
+import com.slskdandroid.core.network.model.NetworkUserStatus
 import com.slskdandroid.core.network.model.QueueDownloadRequest
 import com.slskdandroid.core.network.model.StartSearchRequest
 import retrofit2.http.Body
@@ -48,6 +51,18 @@ interface SlskdApi {
         @Path("username") username: String,
         @Body request: DirectoryContentsRequest,
     ): List<NetworkDirectory>
+
+    /** A peer's self-reported profile (description, picture, upload slots, queue length). 404 if offline. */
+    @GET("api/v0/users/{username}/info")
+    suspend fun getUserInfo(@Path("username") username: String): NetworkUserInfo
+
+    /** A peer's online presence and privileged flag. 404 if offline. */
+    @GET("api/v0/users/{username}/status")
+    suspend fun getUserStatus(@Path("username") username: String): NetworkUserStatus
+
+    /** A peer's network address (`{ address, port }`). 404 if offline. */
+    @GET("api/v0/users/{username}/endpoint")
+    suspend fun getUserEndpoint(@Path("username") username: String): NetworkUserEndpoint
 
     /** Browses a peer's entire share. Blocks until the share is fetched (can be slow/large). */
     @GET("api/v0/users/{username}/browse")
