@@ -8,4 +8,7 @@ android {
 
 dependencies {
     api(projects.feature.rooms.api)
+    implementation(projects.core.model)
+    // Extended icon set (BOM-managed) for room glyphs not in material-icons-core.
+    implementation(libs.androidx.compose.material.icons.extended)
 }

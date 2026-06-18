@@ -2,8 +2,11 @@ package com.slskdandroid.core.network
 
 import com.slskdandroid.core.network.model.DirectoryContentsRequest
 import com.slskdandroid.core.network.model.NetworkBrowseResponse
+import com.slskdandroid.core.network.model.NetworkAvailableRoom
 import com.slskdandroid.core.network.model.NetworkConversation
 import com.slskdandroid.core.network.model.NetworkPrivateMessage
+import com.slskdandroid.core.network.model.NetworkRoomMessage
+import com.slskdandroid.core.network.model.NetworkRoomUser
 import com.slskdandroid.core.network.model.NetworkDirectory
 import com.slskdandroid.core.network.model.NetworkSearch
 import com.slskdandroid.core.network.model.NetworkSearchResponse
@@ -135,4 +138,32 @@ interface SlskdApi {
     /** Acknowledges (marks read) all messages from [username]. */
     @PUT("api/v0/conversations/{username}")
     suspend fun acknowledgeConversation(@Path("username") username: String)
+
+    /** The names of the rooms this user has currently joined. */
+    @GET("api/v0/rooms/joined")
+    suspend fun getJoinedRooms(): List<String>
+
+    /** All rooms available on the network (the room-search list). */
+    @GET("api/v0/rooms/available")
+    suspend fun getAvailableRooms(): List<NetworkAvailableRoom>
+
+    /** Recent chat messages in a joined room. slskd has no rooms push hub, so poll this. */
+    @GET("api/v0/rooms/joined/{room}/messages")
+    suspend fun getRoomMessages(@Path("room") room: String): List<NetworkRoomMessage>
+
+    /** The current members of a joined room (with per-user country/status). */
+    @GET("api/v0/rooms/joined/{room}/users")
+    suspend fun getRoomUsers(@Path("room") room: String): List<NetworkRoomUser>
+
+    /** Joins the room named by the bare JSON-string body. */
+    @POST("api/v0/rooms/joined")
+    suspend fun joinRoom(@Body roomName: String)
+
+    /** Leaves a joined room. */
+    @DELETE("api/v0/rooms/joined/{room}")
+    suspend fun leaveRoom(@Path("room") room: String)
+
+    /** Sends a chat message (bare JSON-string body) to a joined room. */
+    @POST("api/v0/rooms/joined/{room}/messages")
+    suspend fun sendRoomMessage(@Path("room") room: String, @Body message: String)
 }

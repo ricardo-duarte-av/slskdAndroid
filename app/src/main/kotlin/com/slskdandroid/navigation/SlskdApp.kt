@@ -88,7 +88,7 @@ fun SlskdApp(
             )
             downloadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
             uploadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
-            roomsScreen()
+            roomsScreen(onUserInfo = onUserInfo)
             chatScreen()
             usersScreen(
                 onBrowseUser = onBrowseUser,
