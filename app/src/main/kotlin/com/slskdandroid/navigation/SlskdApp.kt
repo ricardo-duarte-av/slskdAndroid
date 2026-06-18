@@ -12,6 +12,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.slskdandroid.feature.browse.api.browseUserRoute
 import com.slskdandroid.feature.browse.impl.browseScreen
+import com.slskdandroid.feature.chat.api.CHAT_ROUTE
 import com.slskdandroid.feature.chat.impl.chatScreen
 import com.slskdandroid.feature.downloads.impl.downloadsScreen
 import com.slskdandroid.feature.rooms.impl.roomsScreen
@@ -19,6 +20,7 @@ import com.slskdandroid.feature.search.api.searchDetailRoute
 import com.slskdandroid.feature.search.impl.searchDetailScreen
 import com.slskdandroid.feature.search.impl.searchListScreen
 import com.slskdandroid.feature.uploads.impl.uploadsScreen
+import com.slskdandroid.feature.users.api.usersUserRoute
 import com.slskdandroid.feature.users.impl.usersScreen
 
 /**
@@ -52,19 +54,39 @@ fun SlskdApp(
             navController = navController,
             startDestination = TopLevelDestination.SEARCH.route,
         ) {
-            val onBrowseUser: (String) -> Unit = { user -> navController.navigate(browseUserRoute(user)) }
+            // Cross-tab jumps (open a peer in the Browse / Users tab). Switch tabs the same way
+            // the nav suite does — pop to the start destination saving the current tab's state —
+            // so the originating tab is restored via its nav item rather than left nested under
+            // the target (which previously stranded the user when they closed the peer).
+            val onBrowseUser: (String) -> Unit = { user ->
+                navController.navigate(browseUserRoute(user)) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                }
+            }
+            val onUserInfo: (String) -> Unit = { user ->
+                navController.navigate(usersUserRoute(user)) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                }
+            }
             searchListScreen(
                 onOpenSearch = { id -> navController.navigate(searchDetailRoute(id)) },
             )
             searchDetailScreen(
                 onBack = { navController.popBackStack() },
                 onBrowseUser = onBrowseUser,
+                onUserInfo = onUserInfo,
             )
-            downloadsScreen(onBrowseUser = onBrowseUser)
-            uploadsScreen(onBrowseUser = onBrowseUser)
+            downloadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo)
+            uploadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo)
             roomsScreen()
             chatScreen()
-            usersScreen()
+            usersScreen(
+                onBrowseUser = onBrowseUser,
+                // No direct-message screen yet — surface the Chat tab until DMs land.
+                onChatUser = { navController.navigate(CHAT_ROUTE) },
+            )
             browseScreen()
         }
     }

@@ -67,6 +67,7 @@ private const val PAGE_SIZE = 5
 internal fun SearchDetailRoute(
     onBack: () -> Unit,
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
     viewModel: SearchDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -75,6 +76,7 @@ internal fun SearchDetailRoute(
         onAction = viewModel::onAction,
         onBack = onBack,
         onBrowseUser = onBrowseUser,
+        onUserInfo = onUserInfo,
     )
 }
 
@@ -85,6 +87,7 @@ internal fun SearchDetailScreen(
     onAction: (SearchDetailAction) -> Unit,
     onBack: () -> Unit,
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -124,7 +127,7 @@ internal fun SearchDetailScreen(
                     if (!phase.isComplete) {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    LoadedResults(phase, uiState.options, onAction, onBrowseUser)
+                    LoadedResults(phase, uiState.options, onAction, onBrowseUser, onUserInfo)
                 }
             }
         }
@@ -161,6 +164,7 @@ private fun LoadedResults(
     options: SearchOptions,
     onAction: (SearchDetailAction) -> Unit,
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -180,6 +184,7 @@ private fun LoadedResults(
                     response = response,
                     onToggle = { onAction(SearchDetailAction.TogglePeer(response.username)) },
                     onBrowseUser = onBrowseUser,
+                    onUserInfo = onUserInfo,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -297,6 +302,7 @@ private fun PeerHeader(
     response: ShownResponse,
     onToggle: () -> Unit,
     onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -321,19 +327,30 @@ private fun PeerHeader(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        PeerOverflowMenu(response.username, onBrowseUser)
+        PeerOverflowMenu(response.username, onBrowseUser, onUserInfo)
     }
 }
 
-/** Per-peer overflow actions. "Message user" (chat DM) will join "Browse user" here later. */
+/** Per-peer overflow actions. "Message user" (chat DM) will join these here later. */
 @Composable
-private fun PeerOverflowMenu(username: String, onBrowseUser: (String) -> Unit) {
+private fun PeerOverflowMenu(
+    username: String,
+    onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Info") },
+                onClick = {
+                    expanded = false
+                    onUserInfo(username)
+                },
+            )
             DropdownMenuItem(
                 text = { Text("Browse user") },
                 onClick = {
