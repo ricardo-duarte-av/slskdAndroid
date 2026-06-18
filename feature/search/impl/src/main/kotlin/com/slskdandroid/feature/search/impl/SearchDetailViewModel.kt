@@ -195,7 +195,8 @@ class SearchDetailViewModel @Inject constructor(
         val directories = matchedFiles.groupBy { it.directory }.map { (directory, files) ->
             val key = dirKey(response.username, directory)
             // An expanded directory shows its full contents (unfiltered), replacing the matches.
-            val effectiveFiles = inter.expandedDirs[key] ?: files
+            val effectiveFiles = (inter.expandedDirs[key] ?: files)
+                .sortedBy { it.displayName.lowercase() }
             val shownFiles = effectiveFiles.map { file ->
                 ShownFile(file, selected = fileKey(response.username, file.filename) in inter.selected)
             }
