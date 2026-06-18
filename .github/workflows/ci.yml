@@ -110,14 +110,16 @@ jobs:
     name: Publish to Play Store
     runs-on: ubuntu-latest
     needs: build
-    # Only publish from the canonical repo on pushes to main or version tags.
+    # Publish only on version tags (e.g. v0.1.2) from the canonical repo — "tag = release".
+    # This keeps Play uploads tied to a deliberate versionCode bump (Play rejects duplicate
+    # version codes) and matches the GitHub Release trigger below.
     # NOTE: this uploads the signed AAB straight to the Play Developer API. The
     # Gradle Play Publisher plugin is intentionally NOT used — it targets AGP's old
     # BaseAppModuleExtension and is incompatible with AGP 9.
     if: >
       github.event_name == 'push' &&
       github.repository == 'ricardo-duarte-av/slskdAndroid' &&
-      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+      startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download release AAB
         uses: actions/download-artifact@v4
@@ -155,6 +157,42 @@ jobs:
           serviceAccountJson: ${{ steps.play_creds.outputs.creds_file }}
           packageName: pt.aguiarvieira.androidslskd
           releaseFiles: aab/*.aab
-          track: internal
+          tracks: internal
           status: draft
           mappingFile: ${{ steps.mapping.outputs.file }}
+
+  release:
+    name: GitHub Release (APKs)
+    runs-on: ubuntu-latest
+    needs: build
+    # Only on version tags (e.g. v0.1.1). Push a tag to cut a release with APK downloads.
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download debug APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          path: apks
+
+      - name: Download release APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-release-apk
+          path: apks
+
+      - name: Rename APKs with version tag
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          mv apks/app-debug.apk "apks/slskdAndroid-${tag}-debug.apk"
+          mv apks/app-release.apk "apks/slskdAndroid-${tag}-release.apk"
+          ls -la apks
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apks/*.apk
+          generate_release_notes: true
+          fail_on_unmatched_files: true

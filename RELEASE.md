@@ -12,7 +12,19 @@ builds every push and auto-publishes to the Play Store.
   and errors still log.
 - **Signing** is read from `keystore.properties` locally, or from environment variables in CI.
 - **CI** (`.github/workflows/ci.yml`) builds debug + release (APK **and** AAB) on every push,
-  uploads them as artifacts, and publishes the AAB to Play on pushes to `main` / `v*` tags.
+  uploads them as artifacts. On `v*` tags it also publishes the AAB to Play (internal/draft)
+  and cuts a **GitHub Release** with the debug + release APKs attached.
+
+### Cutting a release
+
+Publishing is tied to version tags (so each Play upload gets a deliberate, unique
+`versionCode` — Play rejects duplicates). `main` pushes only build + upload artifacts.
+
+1. Bump `versionCode` (and usually `versionName`) in `app/build.gradle.kts`, commit, push.
+2. Tag it: `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag triggers:
+   - **Play** → AAB uploaded to the internal track as a draft.
+   - **GitHub Release** → created with `slskdAndroid-vX.Y.Z-debug.apk` and
+     `slskdAndroid-vX.Y.Z-release.apk` as downloads.
 
 ## The upload keystore
 

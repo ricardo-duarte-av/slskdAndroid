@@ -84,3 +84,17 @@ Use the Gradle wrapper (`./gradlew`). All of these are verified working:
 - **Lint:** `./gradlew lintDebug` (per module: `./gradlew :app:lintDebug`)
 
 `local.properties` (gitignored) must point at the SDK: `sdk.dir=/home/daedric/android-sdk`.
+
+## Release, signing & CI
+
+Full details live in `RELEASE.md`; the essentials:
+
+- **Signing:** release builds are signed via `signingConfigs.release` in `app/build.gradle.kts`, which reads `keystore.properties` (gitignored, local) or the `KEYSTORE_FILE`/`KEYSTORE_PASSWORD`/`KEY_ALIAS`/`KEY_PASSWORD` env vars (CI). With neither present the release is left **unsigned** (so forks/PRs still build). The upload keystore is `app/release/upload-keystore.jks` (gitignored — never commit it). Bump `versionCode` for every Play upload (it must strictly increase).
+- **Optimized release:** `isMinifyEnabled` + `isShrinkResources` with R8 (`proguard-android-optimize.txt` + `app/proguard-rules.pro`). Keep rules cover kotlinx.serialization, the SignalR/Gson `Hub*` wire types (field names must survive R8), and Retrofit/OkHttp. `-assumenosideeffects` strips `Log.v/d/i`; OkHttp HTTP logging is already `Level.NONE` in release — so release logcat stays quiet (warnings/errors still log).
+- **CI:** `.github/workflows/ci.yml`.
+  - `build` job (every push/PR): builds debug + release **APK and AAB** plus the R8 `mapping.txt`, uploaded as artifacts.
+  - `publish` job (`v*` tags only): uploads the signed AAB to the Play **internal** track as a **draft** via the Play Developer API (`r0adkll/upload-google-play`). **Do not use Gradle Play Publisher** — GPP 3.12.1 targets AGP's removed `BaseAppModuleExtension` and is incompatible with AGP 9.
+  - `release` job (`v*` tags only): creates a **GitHub Release** with the debug + release APKs attached as downloads.
+- **Runner gotcha:** GitHub runners' bundled `sdkmanager` can't see API 37. CI downloads the exact `commandlinetools-linux-14742923` build and installs `platforms;android-37.0` (note the `.0`) + `build-tools;37.0.0`.
+- **Secrets** (repo Actions secrets): `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, `PLAY_SERVICE_ACCOUNT_JSON_BASE64`.
+- **Cutting a release:** bump `versionCode`/`versionName`, then push a `vX.Y.Z` tag — the tag triggers both the Play draft upload and the GitHub Release with APKs (`main` pushes only build).
