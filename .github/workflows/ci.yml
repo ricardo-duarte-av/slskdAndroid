@@ -35,10 +35,20 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK platform & build-tools (37)
+      - name: Install Android SDK 37 (matching local cmdline-tools build)
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+          set -euo pipefail
+          # The runner's bundled sdkmanager is too old to see API 37, which is only
+          # published in a recent command-line-tools build. Fetch the exact build used
+          # locally so the package list includes platforms;android-37.0 + build-tools;37.0.0.
+          curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip" -o /tmp/clt.zip
+          rm -rf "$ANDROID_HOME/cmdline-tools/latest"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          unzip -q /tmp/clt.zip -d /tmp/clt
+          mv /tmp/clt/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+          "$SDKM" "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -111,10 +121,20 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK platform & build-tools (37)
+      - name: Install Android SDK 37 (matching local cmdline-tools build)
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+          set -euo pipefail
+          # The runner's bundled sdkmanager is too old to see API 37, which is only
+          # published in a recent command-line-tools build. Fetch the exact build used
+          # locally so the package list includes platforms;android-37.0 + build-tools;37.0.0.
+          curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip" -o /tmp/clt.zip
+          rm -rf "$ANDROID_HOME/cmdline-tools/latest"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          unzip -q /tmp/clt.zip -d /tmp/clt
+          mv /tmp/clt/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+          "$SDKM" "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
