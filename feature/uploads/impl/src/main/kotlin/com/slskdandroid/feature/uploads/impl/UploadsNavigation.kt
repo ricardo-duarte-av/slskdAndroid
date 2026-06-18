@@ -8,8 +8,9 @@ import com.slskdandroid.feature.uploads.api.UPLOADS_ROUTE
 fun NavGraphBuilder.uploadsScreen(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     composable(route = UPLOADS_ROUTE) {
-        UploadsRoute(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo)
+        UploadsRoute(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
     }
 }

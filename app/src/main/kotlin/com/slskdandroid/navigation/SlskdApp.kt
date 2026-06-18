@@ -12,7 +12,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.slskdandroid.feature.browse.api.browseUserRoute
 import com.slskdandroid.feature.browse.impl.browseScreen
-import com.slskdandroid.feature.chat.api.CHAT_ROUTE
+import com.slskdandroid.feature.chat.api.chatUserRoute
 import com.slskdandroid.feature.chat.impl.chatScreen
 import com.slskdandroid.feature.downloads.impl.downloadsScreen
 import com.slskdandroid.feature.rooms.impl.roomsScreen
@@ -70,6 +70,13 @@ fun SlskdApp(
                     launchSingleTop = true
                 }
             }
+            // Open the Chat tab pre-targeted at a peer (lands on the new-message composer).
+            val onChatUser: (String) -> Unit = { user ->
+                navController.navigate(chatUserRoute(user)) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                }
+            }
             searchListScreen(
                 onOpenSearch = { id -> navController.navigate(searchDetailRoute(id)) },
             )
@@ -77,15 +84,15 @@ fun SlskdApp(
                 onBack = { navController.popBackStack() },
                 onBrowseUser = onBrowseUser,
                 onUserInfo = onUserInfo,
+                onChatUser = onChatUser,
             )
-            downloadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo)
-            uploadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo)
+            downloadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
+            uploadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
             roomsScreen()
             chatScreen()
             usersScreen(
                 onBrowseUser = onBrowseUser,
-                // No direct-message screen yet — surface the Chat tab until DMs land.
-                onChatUser = { navController.navigate(CHAT_ROUTE) },
+                onChatUser = onChatUser,
             )
             browseScreen()
         }

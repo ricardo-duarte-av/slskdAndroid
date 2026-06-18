@@ -19,11 +19,17 @@ fun NavGraphBuilder.searchDetailScreen(
     onBack: () -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     composable(
         route = SEARCH_DETAIL_ROUTE,
         arguments = listOf(navArgument("searchId") { type = NavType.StringType }),
     ) {
-        SearchDetailRoute(onBack = onBack, onBrowseUser = onBrowseUser, onUserInfo = onUserInfo)
+        SearchDetailRoute(
+            onBack = onBack,
+            onBrowseUser = onBrowseUser,
+            onUserInfo = onUserInfo,
+            onChatUser = onChatUser,
+        )
     }
 }

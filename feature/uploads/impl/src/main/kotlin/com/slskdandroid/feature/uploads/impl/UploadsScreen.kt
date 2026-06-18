@@ -60,6 +60,7 @@ import java.util.Locale
 internal fun UploadsRoute(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
     viewModel: UploadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -68,6 +69,7 @@ internal fun UploadsRoute(
         onAction = viewModel::onAction,
         onBrowseUser = onBrowseUser,
         onUserInfo = onUserInfo,
+        onChatUser = onChatUser,
     )
 }
 
@@ -78,6 +80,7 @@ internal fun UploadsScreen(
     onAction: (UploadsAction) -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     // While selecting, system back clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(UploadsAction.ClearSelection) }
@@ -108,7 +111,7 @@ internal fun UploadsScreen(
                     if (uiState.users.isEmpty()) {
                         CenteredMessage("No uploads. Peers' requests for your shared files appear here.")
                     } else {
-                        UploadsList(uiState, onAction, onBrowseUser, onUserInfo)
+                        UploadsList(uiState, onAction, onBrowseUser, onUserInfo, onChatUser)
                     }
             }
         }
@@ -215,6 +218,7 @@ private fun UploadsList(
     onAction: (UploadsAction) -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -230,6 +234,7 @@ private fun UploadsList(
                     onToggle = { onAction(UploadsAction.ToggleCollapse(user.username)) },
                     onBrowseUser = onBrowseUser,
                     onUserInfo = onUserInfo,
+                    onChatUser = onChatUser,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -277,6 +282,7 @@ private fun PeerHeader(
     onToggle: () -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -298,16 +304,17 @@ private fun PeerHeader(
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
         )
-        PeerOverflowMenu(username, onBrowseUser, onUserInfo)
+        PeerOverflowMenu(username, onBrowseUser, onUserInfo, onChatUser)
     }
 }
 
-/** Per-peer overflow actions. "Message user" (chat DM) will join these here later. */
+/** Per-peer overflow actions: open the peer's profile, browse their share, or message them. */
 @Composable
 private fun PeerOverflowMenu(
     username: String,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -327,6 +334,13 @@ private fun PeerOverflowMenu(
                 onClick = {
                     expanded = false
                     onBrowseUser(username)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Chat") },
+                onClick = {
+                    expanded = false
+                    onChatUser(username)
                 },
             )
         }

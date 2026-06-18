@@ -68,6 +68,7 @@ internal fun SearchDetailRoute(
     onBack: () -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
     viewModel: SearchDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -77,6 +78,7 @@ internal fun SearchDetailRoute(
         onBack = onBack,
         onBrowseUser = onBrowseUser,
         onUserInfo = onUserInfo,
+        onChatUser = onChatUser,
     )
 }
 
@@ -88,6 +90,7 @@ internal fun SearchDetailScreen(
     onBack: () -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -127,7 +130,7 @@ internal fun SearchDetailScreen(
                     if (!phase.isComplete) {
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
-                    LoadedResults(phase, uiState.options, onAction, onBrowseUser, onUserInfo)
+                    LoadedResults(phase, uiState.options, onAction, onBrowseUser, onUserInfo, onChatUser)
                 }
             }
         }
@@ -165,6 +168,7 @@ private fun LoadedResults(
     onAction: (SearchDetailAction) -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -185,6 +189,7 @@ private fun LoadedResults(
                     onToggle = { onAction(SearchDetailAction.TogglePeer(response.username)) },
                     onBrowseUser = onBrowseUser,
                     onUserInfo = onUserInfo,
+                    onChatUser = onChatUser,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -303,6 +308,7 @@ private fun PeerHeader(
     onToggle: () -> Unit,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -327,16 +333,17 @@ private fun PeerHeader(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        PeerOverflowMenu(response.username, onBrowseUser, onUserInfo)
+        PeerOverflowMenu(response.username, onBrowseUser, onUserInfo, onChatUser)
     }
 }
 
-/** Per-peer overflow actions. "Message user" (chat DM) will join these here later. */
+/** Per-peer overflow actions: open the peer's profile, browse their share, or message them. */
 @Composable
 private fun PeerOverflowMenu(
     username: String,
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -356,6 +363,13 @@ private fun PeerOverflowMenu(
                 onClick = {
                     expanded = false
                     onBrowseUser(username)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Chat") },
+                onClick = {
+                    expanded = false
+                    onChatUser(username)
                 },
             )
         }

@@ -1,13 +1,26 @@
 package com.slskdandroid.feature.chat.impl
 
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavType
 import androidx.navigation.compose.composable
-import com.slskdandroid.core.designsystem.component.PlaceholderScreen
+import androidx.navigation.navArgument
 import com.slskdandroid.feature.chat.api.CHAT_ROUTE
+import com.slskdandroid.feature.chat.api.CHAT_USER_ARG
+import com.slskdandroid.feature.chat.api.CHAT_USER_ROUTE
 
-/** Wires the Chat route into an app-level [NavGraphBuilder]. Placeholder until built out. */
+/**
+ * Wires the Chat routes into an app-level [NavGraphBuilder]: the conversation-list landing and the
+ * peer deep-link (`chat/{username}`) opened from the Users/Search/Downloads/Uploads "Chat" actions,
+ * which lands on the new-message composer pre-filled with that peer.
+ */
 fun NavGraphBuilder.chatScreen() {
     composable(route = CHAT_ROUTE) {
-        PlaceholderScreen(title = "Chat")
+        ChatRoute()
+    }
+    composable(
+        route = CHAT_USER_ROUTE,
+        arguments = listOf(navArgument(CHAT_USER_ARG) { type = NavType.StringType }),
+    ) {
+        ChatRoute()
     }
 }

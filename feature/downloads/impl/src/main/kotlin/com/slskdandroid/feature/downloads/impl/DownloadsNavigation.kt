@@ -8,8 +8,9 @@ import com.slskdandroid.feature.downloads.api.DOWNLOADS_ROUTE
 fun NavGraphBuilder.downloadsScreen(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
 ) {
     composable(route = DOWNLOADS_ROUTE) {
-        DownloadsRoute(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo)
+        DownloadsRoute(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
     }
 }

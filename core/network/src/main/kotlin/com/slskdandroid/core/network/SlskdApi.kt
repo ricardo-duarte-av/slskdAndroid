@@ -2,6 +2,8 @@ package com.slskdandroid.core.network
 
 import com.slskdandroid.core.network.model.DirectoryContentsRequest
 import com.slskdandroid.core.network.model.NetworkBrowseResponse
+import com.slskdandroid.core.network.model.NetworkConversation
+import com.slskdandroid.core.network.model.NetworkPrivateMessage
 import com.slskdandroid.core.network.model.NetworkDirectory
 import com.slskdandroid.core.network.model.NetworkSearch
 import com.slskdandroid.core.network.model.NetworkSearchResponse
@@ -108,4 +110,29 @@ interface SlskdApi {
         @Path("id") id: String,
         @Query("remove") remove: Boolean,
     )
+
+    /**
+     * All private-message conversations. slskd has no messaging push hub, so poll this. With
+     * [includeInactive] = true closed/idle threads are returned too (so the list stays complete).
+     */
+    @GET("api/v0/conversations")
+    suspend fun getConversations(
+        @Query("includeInactive") includeInactive: Boolean,
+        @Query("unAcknowledgedOnly") unAcknowledgedOnly: Boolean,
+    ): List<NetworkConversation>
+
+    /** The messages of one conversation. 404 if no conversation with [username] exists yet. */
+    @GET("api/v0/conversations/{username}/messages")
+    suspend fun getMessages(@Path("username") username: String): List<NetworkPrivateMessage>
+
+    /**
+     * Sends a private message to [username]. The body is the bare message text (serialized as a
+     * JSON string, which slskd's `[FromBody] string` binder accepts). 201 on success.
+     */
+    @POST("api/v0/conversations/{username}")
+    suspend fun sendMessage(@Path("username") username: String, @Body message: String)
+
+    /** Acknowledges (marks read) all messages from [username]. */
+    @PUT("api/v0/conversations/{username}")
+    suspend fun acknowledgeConversation(@Path("username") username: String)
 }

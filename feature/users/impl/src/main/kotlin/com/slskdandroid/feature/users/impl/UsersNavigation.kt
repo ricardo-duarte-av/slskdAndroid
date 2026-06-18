@@ -11,8 +11,7 @@ import com.slskdandroid.feature.users.api.USERS_USER_ROUTE
 /**
  * Wires the Users routes into an app-level [NavGraphBuilder]: the typed-username landing and the
  * peer deep-link (`users/{username}`) opened from Search/Downloads/Uploads. [onBrowseUser] opens
- * the peer in the Browse tab; [onChatUser] will open a direct-message conversation once Chat is
- * built out.
+ * the peer in the Browse tab; [onChatUser] opens the Chat tab's new-message composer for the peer.
  */
 fun NavGraphBuilder.usersScreen(
     onBrowseUser: (String) -> Unit,

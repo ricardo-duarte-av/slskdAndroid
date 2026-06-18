@@ -2,8 +2,12 @@ package com.slskdandroid.core.data.di
 
 import com.slskdandroid.core.data.ConnectionSettingsRepository
 import com.slskdandroid.core.data.DefaultConnectionSettingsRepository
+import com.slskdandroid.core.data.AvatarRepository
 import com.slskdandroid.core.data.BrowseRepository
+import com.slskdandroid.core.data.ChatRepository
+import com.slskdandroid.core.data.DefaultAvatarRepository
 import com.slskdandroid.core.data.DefaultBrowseRepository
+import com.slskdandroid.core.data.DefaultChatRepository
 import com.slskdandroid.core.data.DefaultDownloadsRepository
 import com.slskdandroid.core.data.DefaultSearchRepository
 import com.slskdandroid.core.data.DefaultUploadsRepository
@@ -41,6 +45,14 @@ internal interface DataModule {
     @Binds
     @Singleton
     fun bindsUsersRepository(impl: DefaultUsersRepository): UsersRepository
+
+    @Binds
+    @Singleton
+    fun bindsChatRepository(impl: DefaultChatRepository): ChatRepository
+
+    @Binds
+    @Singleton
+    fun bindsAvatarRepository(impl: DefaultAvatarRepository): AvatarRepository
 
     @Binds
     @Singleton
