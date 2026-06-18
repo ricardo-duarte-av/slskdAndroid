@@ -99,55 +99,40 @@ jobs:
           path: app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
 
+      - name: Upload R8 mapping
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mapping
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
+
   publish:
     name: Publish to Play Store
     runs-on: ubuntu-latest
     needs: build
     # Only publish from the canonical repo on pushes to main or version tags.
+    # NOTE: this uploads the signed AAB straight to the Play Developer API. The
+    # Gradle Play Publisher plugin is intentionally NOT used — it targets AGP's old
+    # BaseAppModuleExtension and is incompatible with AGP 9.
     if: >
       github.event_name == 'push' &&
       github.repository == 'ricardo-duarte-av/slskdAndroid' &&
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+      - name: Download release AAB
+        uses: actions/download-artifact@v4
         with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
+          name: app-release-aab
+          path: aab
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Download R8 mapping
+        uses: actions/download-artifact@v4
+        with:
+          name: release-mapping
+          path: mapping
+        continue-on-error: true
 
-      - name: Install Android SDK 37 (matching local cmdline-tools build)
-        run: |
-          set -euo pipefail
-          # The runner's bundled sdkmanager is too old to see API 37, which is only
-          # published in a recent command-line-tools build. Fetch the exact build used
-          # locally so the package list includes platforms;android-37.0 + build-tools;37.0.0.
-          curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip" -o /tmp/clt.zip
-          rm -rf "$ANDROID_HOME/cmdline-tools/latest"
-          mkdir -p "$ANDROID_HOME/cmdline-tools"
-          unzip -q /tmp/clt.zip -d /tmp/clt
-          mv /tmp/clt/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
-          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$SDKM" --licenses >/dev/null 2>&1 || true
-          "$SDKM" "platform-tools" "platforms;android-37.0" "build-tools;37.0.0"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Decode release keystore
-        id: keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
-          echo "keystore_file=$RUNNER_TEMP/upload-keystore.jks" >> "$GITHUB_OUTPUT"
-
-      - name: Decode Play service-account JSON
+      - name: Write Play service-account JSON
         id: play_creds
         env:
           PLAY_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}
@@ -155,13 +140,21 @@ jobs:
           echo "$PLAY_SERVICE_ACCOUNT_JSON_BASE64" | base64 --decode > "$RUNNER_TEMP/play-service-account.json"
           echo "creds_file=$RUNNER_TEMP/play-service-account.json" >> "$GITHUB_OUTPUT"
 
-      - name: Publish release bundle
-        env:
-          KEYSTORE_FILE: ${{ steps.keystore.outputs.keystore_file }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ steps.play_creds.outputs.creds_file }}
-          PLAY_TRACK: internal
-          PLAY_RELEASE_STATUS: draft
-        run: ./gradlew :app:publishReleaseBundle -Pslskd.enablePlayPublishing --stacktrace
+      - name: Resolve mapping file (optional)
+        id: mapping
+        run: |
+          if [ -f mapping/mapping.txt ]; then
+            echo "file=mapping/mapping.txt" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload AAB to Play (internal, draft)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.play_creds.outputs.creds_file }}
+          packageName: pt.aguiarvieira.androidslskd
+          releaseFiles: aab/*.aab
+          track: internal
+          status: draft
+          mappingFile: ${{ steps.mapping.outputs.file }}

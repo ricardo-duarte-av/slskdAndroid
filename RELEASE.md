@@ -103,25 +103,20 @@ store listing must be done by hand. After that, CI takes over.
 
 ### How CI publishes
 
-The publish job decodes the JSON, sets `PLAY_SERVICE_ACCOUNT_JSON` to its path, and runs:
+The build job produces the signed AAB; the publish job downloads that artifact and uploads
+it straight to the **Play Developer API** via the `r0adkll/upload-google-play` action.
+Defaults (in `ci.yml`): **track = `internal`**, **status = `draft`**. The R8 `mapping.txt`
+is uploaded alongside it (when present) for crash deobfuscation. Change `track` to
+`alpha`/`beta`/`production` and `status` to `completed` in `ci.yml` once you're confident.
 
-```bash
-./gradlew :app:publishReleaseBundle -Pslskd.enablePlayPublishing
-```
+> **Version codes:** each Play upload needs a unique, increasing `versionCode`. It's `2` in
+> `app/build.gradle.kts` today (v1 was the manual first upload) — bump it for every release
+> (or wire it to the CI run number if you want that automated later).
 
-Defaults (overridable via env in `ci.yml`): **track = `internal`**, **status = `draft`**.
-Change `PLAY_TRACK` to `alpha`/`beta`/`production` and `PLAY_RELEASE_STATUS` to `completed`
-once you're confident. Note the Gradle Play Publisher plugin is only applied when
-`-Pslskd.enablePlayPublishing` is passed, so normal builds never depend on it.
+## Why not Gradle Play Publisher?
 
-> **Version codes:** each Play upload needs a unique, increasing `versionCode`. It's `1` in
-> `app/build.gradle.kts` today — bump it for every release (or wire it to the CI run number
-> if you want that automated later).
-
-## Compatibility note
-
-Gradle Play Publisher `3.12.1` predates AGP 9. It's kept off the classpath for everyday
-builds (applied only behind the opt-in flag), so if a GPP/AGP-9 incompatibility surfaces it
-only affects the publish job, not local or CI builds. If `publishReleaseBundle` fails on a
-GPP-vs-AGP9 issue, fall back to uploading the CI-built `app-release-aab` artifact manually
-until a compatible GPP release lands.
+The Gradle Play Publisher plugin (`com.github.triplet.play` 3.12.1) targets AGP's old
+internal `BaseAppModuleExtension`, which **AGP 9 removed** — applying it fails with
+`Extension of type 'BaseAppModuleExtension' does not exist`. Until GPP ships AGP-9 support,
+publishing goes through the Play Developer API directly (decoupled from the Gradle build),
+which is what the `publish` job does.
