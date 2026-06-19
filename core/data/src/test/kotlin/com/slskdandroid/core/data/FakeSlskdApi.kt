@@ -28,12 +28,15 @@ open class FakeSlskdApi : SlskdApi {
     private fun nope(method: String): Nothing =
         error("FakeSlskdApi.$method was called but not stubbed for this test")
 
+    // Value-returning endpoints fail via an expression body. Unit-returning endpoints MUST use a
+    // block body so their return type stays Unit — an expression body would infer Nothing, which a
+    // Unit-returning override in a test cannot legally widen.
     override suspend fun getSearches(): List<NetworkSearch> = nope("getSearches")
     override suspend fun startSearch(request: StartSearchRequest): NetworkSearch = nope("startSearch")
     override suspend fun getSearch(id: String): NetworkSearch = nope("getSearch")
-    override suspend fun cancelSearch(id: String) = nope("cancelSearch")
+    override suspend fun cancelSearch(id: String) { nope("cancelSearch") }
     override suspend fun getSearchResponses(id: String): List<NetworkSearchResponse> = nope("getSearchResponses")
-    override suspend fun deleteSearch(id: String) = nope("deleteSearch")
+    override suspend fun deleteSearch(id: String) { nope("deleteSearch") }
     override suspend fun getDirectoryContents(
         username: String,
         request: DirectoryContentsRequest,
@@ -46,10 +49,10 @@ open class FakeSlskdApi : SlskdApi {
     override suspend fun getBrowseStatus(username: String): Double = nope("getBrowseStatus")
 
     override suspend fun getDownloads(): List<NetworkUserDownloads> = nope("getDownloads")
-    override suspend fun enqueueDownloads(username: String, files: List<QueueDownloadRequest>) = nope("enqueueDownloads")
-    override suspend fun cancelDownload(username: String, id: String, remove: Boolean) = nope("cancelDownload")
+    override suspend fun enqueueDownloads(username: String, files: List<QueueDownloadRequest>) { nope("enqueueDownloads") }
+    override suspend fun cancelDownload(username: String, id: String, remove: Boolean) { nope("cancelDownload") }
     override suspend fun getUploads(): List<NetworkUserDownloads> = nope("getUploads")
-    override suspend fun cancelUpload(username: String, id: String, remove: Boolean) = nope("cancelUpload")
+    override suspend fun cancelUpload(username: String, id: String, remove: Boolean) { nope("cancelUpload") }
 
     override suspend fun getConversations(
         includeInactive: Boolean,
@@ -57,14 +60,14 @@ open class FakeSlskdApi : SlskdApi {
     ): List<NetworkConversation> = nope("getConversations")
 
     override suspend fun getMessages(username: String): List<NetworkPrivateMessage> = nope("getMessages")
-    override suspend fun sendMessage(username: String, message: String) = nope("sendMessage")
-    override suspend fun acknowledgeConversation(username: String) = nope("acknowledgeConversation")
+    override suspend fun sendMessage(username: String, message: String) { nope("sendMessage") }
+    override suspend fun acknowledgeConversation(username: String) { nope("acknowledgeConversation") }
 
     override suspend fun getJoinedRooms(): List<String> = nope("getJoinedRooms")
     override suspend fun getAvailableRooms(): List<NetworkAvailableRoom> = nope("getAvailableRooms")
     override suspend fun getRoomMessages(room: String): List<NetworkRoomMessage> = nope("getRoomMessages")
     override suspend fun getRoomUsers(room: String): List<NetworkRoomUser> = nope("getRoomUsers")
-    override suspend fun joinRoom(roomName: String) = nope("joinRoom")
-    override suspend fun leaveRoom(room: String) = nope("leaveRoom")
-    override suspend fun sendRoomMessage(room: String, message: String) = nope("sendRoomMessage")
+    override suspend fun joinRoom(roomName: String) { nope("joinRoom") }
+    override suspend fun leaveRoom(room: String) { nope("leaveRoom") }
+    override suspend fun sendRoomMessage(room: String, message: String) { nope("sendRoomMessage") }
 }

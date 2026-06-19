@@ -53,11 +53,11 @@ class DefaultDownloadsRepositoryTest {
         val api = object : FakeSlskdApi() {
             override suspend fun getDownloads() = listOf(
                 NetworkUserDownloads(
-                    "u",
-                    listOf(
+                    username = "u",
+                    directories = listOf(
                         NetworkDownloadDirectory(
-                            "d",
-                            listOf(
+                            directory = "d",
+                            files = listOf(
                                 transfer("q", "d\\q", "Queued, Remotely"),
                                 transfer("e", "d\\e", "Completed, Errored"),
                                 transfer("c", "d\\c", "Completed, Cancelled"),
