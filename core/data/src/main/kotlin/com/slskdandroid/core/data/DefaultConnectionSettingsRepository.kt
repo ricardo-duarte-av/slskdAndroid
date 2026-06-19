@@ -3,8 +3,8 @@ package com.slskdandroid.core.data
 import com.slskdandroid.core.common.ApplicationScope
 import com.slskdandroid.core.datastore.ConnectionSettingsDataSource
 import com.slskdandroid.core.model.ConnectionSettings
+import com.slskdandroid.core.network.ConnectionTester
 import com.slskdandroid.core.network.SlskdConnectionState
-import com.slskdandroid.core.network.SlskdConnectionTester
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
@@ -15,7 +15,7 @@ import javax.inject.Singleton
 @Singleton
 internal class DefaultConnectionSettingsRepository @Inject constructor(
     private val dataSource: ConnectionSettingsDataSource,
-    private val connectionTester: SlskdConnectionTester,
+    private val connectionTester: ConnectionTester,
     private val connectionState: SlskdConnectionState,
     @ApplicationScope private val appScope: CoroutineScope,
 ) : ConnectionSettingsRepository {

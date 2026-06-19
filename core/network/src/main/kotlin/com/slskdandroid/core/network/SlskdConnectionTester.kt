@@ -13,9 +13,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Validates candidate [ConnectionSettings] before they are persisted by making a single
- * authenticated request to slskd's `GET /api/v0/application` endpoint (which requires auth
- * under any scheme). A 2xx response confirms the URL is reachable and the API key is valid.
+ * Validates candidate [ConnectionSettings] against a slskd server. Behind an interface so the
+ * data layer that depends on it can be unit-tested with a fake instead of real networking.
+ */
+interface ConnectionTester {
+    suspend fun verify(settings: ConnectionSettings): Result<Unit>
+}
+
+/**
+ * Real [ConnectionTester]. Validates candidate [ConnectionSettings] before they are persisted by
+ * making a single authenticated request to slskd's `GET /api/v0/application` endpoint (which
+ * requires auth under any scheme). A 2xx response confirms the URL is reachable and the API key
+ * is valid.
  *
  * Uses its own short-lived client (not the app's dynamic client) since the settings under
  * test are not yet active.
@@ -23,8 +32,8 @@ import javax.inject.Singleton
 @Singleton
 class SlskdConnectionTester @Inject constructor(
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-) {
-    suspend fun verify(settings: ConnectionSettings): Result<Unit> = withContext(ioDispatcher) {
+) : ConnectionTester {
+    override suspend fun verify(settings: ConnectionSettings): Result<Unit> = withContext(ioDispatcher) {
         // Built locally (not a class member) so OkHttp stays out of this type's public surface,
         // which keeps consuming modules' annotation processors from needing OkHttp on classpath.
         val client = OkHttpClient.Builder()
