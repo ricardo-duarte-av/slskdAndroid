@@ -4,9 +4,9 @@ import com.slskdandroid.core.common.IoDispatcher
 import com.slskdandroid.core.model.Search
 import com.slskdandroid.core.model.SearchResponse
 import com.slskdandroid.core.model.SearchResultFile
+import com.slskdandroid.core.network.SearchHub
 import com.slskdandroid.core.network.SearchHubEvent
 import com.slskdandroid.core.network.SlskdApi
-import com.slskdandroid.core.network.SlskdSearchHub
 import com.slskdandroid.core.network.model.DirectoryContentsRequest
 import com.slskdandroid.core.network.model.NetworkFile
 import com.slskdandroid.core.network.model.NetworkSearch
@@ -28,7 +28,7 @@ import javax.inject.Inject
 
 internal class DefaultSearchRepository @Inject constructor(
     private val api: SlskdApi,
-    private val searchHub: SlskdSearchHub,
+    private val searchHub: SearchHub,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : SearchRepository {
 

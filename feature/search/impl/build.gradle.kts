@@ -11,8 +11,5 @@ dependencies {
     implementation(projects.core.model)
     // Extended icon set (BOM-managed) for the Download glyph not present in material-icons-core.
     implementation(libs.androidx.compose.material.icons.extended)
-
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.turbine)
+    // Unit-test deps (junit, coroutines-test, turbine) come from the library convention plugin.
 }

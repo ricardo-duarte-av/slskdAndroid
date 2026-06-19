@@ -73,6 +73,8 @@ Follow Google's official architecture guidance, as demonstrated by [NowInAndroid
 ### Standard patterns
 ViewModel exposes a single `StateFlow<UiState>` and a `onAction(action)` entry point; UiState is a `sealed interface` (Loading/Success/Error); Screens split into a stateful `Route` (collects state, holds `hiltViewModel()`) and a stateless `Screen` (pure, previewable). Repositories are interfaces with `OfflineFirst*`/network-backed implementations. See `~/.claude/skills/claude-android-skill/references/` for full templates.
 
+**Testing:** plain JVM unit tests (`src/test`) with JUnit4 + kotlinx-coroutines-test (`runTest`) + Turbine (`flow.test { }` for Flow/StateFlow assertions) — these come from the library convention plugin, so any module has them. Prefer **hand-written fakes** over a mocking framework (none is on the classpath): fake the *interface* a class depends on (so depend on interfaces, not concrete classes — that's why `SearchHub` exists). ViewModels need `MainDispatcherRule` to set `Dispatchers.Main`. Templates to copy: `core:data`'s `DefaultSearchRepositoryTest` (+ reusable `FakeSlskdApi`/`FakeSearchHub`) and `feature:search:impl`'s `SearchListViewModelTest`. Skip Compose UI/instrumented tests for now (slow/brittle on the alpha stack).
+
 ## Build & test
 
 **Do not run Gradle builds (`assembleDebug`, etc.) — the user compiles and runs the app themselves.** Write the code and stop; don't invoke the wrapper to "verify" unless explicitly asked. The commands below are for reference / for the user.
@@ -80,7 +82,7 @@ ViewModel exposes a single `StateFlow<UiState>` and a `onAction(action)` entry p
 Use the Gradle wrapper (`./gradlew`). All of these are verified working:
 
 - **Build APK:** `./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`
-- **Unit tests:** `./gradlew testDebugUnitTest` (single test: `./gradlew :feature:search:impl:testDebugUnitTest --tests "com.slskdandroid.feature.search.impl.SearchViewModelTest"`)
+- **Unit tests:** `./gradlew testDebugUnitTest` (single test: `./gradlew :feature:search:impl:testDebugUnitTest --tests "com.slskdandroid.feature.search.impl.SearchListViewModelTest"`)
 - **Lint:** `./gradlew lintDebug` (per module: `./gradlew :app:lintDebug`)
 
 `local.properties` (gitignored) must point at the SDK: `sdk.dir=/home/daedric/android-sdk`.
@@ -95,7 +97,7 @@ Full details live in `RELEASE.md`; the essentials:
 
   | Trigger | What runs |
   | --- | --- |
-  | any push / PR | `build` → debug+release APK + AAB + `mapping.txt` as artifacts |
+  | any push / PR | `build` → `testDebugUnitTest`, then debug+release APK + AAB + `mapping.txt` as artifacts |
   | `v*` tag | build **+** Play upload (internal/draft) **+** GitHub Release with APKs |
 
   - `build` job (every push/PR): builds debug + release **APK and AAB** plus the R8 `mapping.txt`, uploaded as artifacts.

@@ -11,17 +11,25 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Streams slskd's search-hub events. Each collection opens its own hub connection, starts it,
- * and emits every `RESPONSE`/`UPDATE` the server broadcasts (across all searches — callers
- * filter by search id). The connection is started before the flow begins emitting; cancelling
- * the collection unsubscribes the handlers and stops the connection.
+ * Streams slskd's search-hub events. Behind an interface so repositories that consume it can be
+ * unit-tested with a fake instead of a live SignalR connection.
+ */
+interface SearchHub {
+    fun events(): Flow<SearchHubEvent>
+}
+
+/**
+ * Real [SearchHub]. Each collection opens its own hub connection, starts it, and emits every
+ * `RESPONSE`/`UPDATE` the server broadcasts (across all searches — callers filter by search id).
+ * The connection is started before the flow begins emitting; cancelling the collection
+ * unsubscribes the handlers and stops the connection.
  */
 @Singleton
 class SlskdSearchHub @Inject constructor(
     private val signalRClient: SlskdSignalRClient,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
-) {
-    fun events(): Flow<SearchHubEvent> = callbackFlow {
+) : SearchHub {
+    override fun events(): Flow<SearchHubEvent> = callbackFlow {
         val connection = signalRClient.hubConnection("search")
 
         val responseSub = connection.on(
