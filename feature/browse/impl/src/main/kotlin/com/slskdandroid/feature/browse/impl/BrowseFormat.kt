@@ -16,13 +16,34 @@ internal fun formatBytes(bytes: Long): String {
     return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
 }
 
-/** size · bitrate · length · type, omitting parts slskd didn't report. */
+/** size · bitrate · quality · length · type, omitting parts slskd didn't report. */
 internal fun fileMeta(file: SearchResultFile): String = buildList {
     add(formatBytes(file.sizeBytes))
     file.bitRate?.let { add("$it kbps") }
+    qualityLabel(file)?.let { add(it) }
     file.lengthSeconds?.let { add(formatDuration(it)) }
     file.extension?.takeIf { it.isNotBlank() }?.let { add(it.trimStart('.').uppercase()) }
 }.joinToString(" · ")
+
+/**
+ * slskd-style audio quality from bit depth + sample rate, e.g. "16/44.1 kHz" (lossless), or just
+ * the sample rate when the depth is unknown. Null when neither was reported (typical for lossy).
+ */
+internal fun qualityLabel(file: SearchResultFile): String? {
+    val sampleRate = file.sampleRate?.takeIf { it > 0 }?.let(::formatSampleRate)
+    val bitDepth = file.bitDepth?.takeIf { it > 0 }
+    return when {
+        bitDepth != null && sampleRate != null -> "$bitDepth/$sampleRate"
+        else -> sampleRate
+    }
+}
+
+/** Hz → a compact kHz label: 44100 → "44.1 kHz", 48000 → "48 kHz". */
+private fun formatSampleRate(hz: Int): String {
+    val khz = hz / 1000.0
+    val value = if (khz % 1.0 == 0.0) khz.toInt().toString() else "%.1f".format(khz)
+    return "$value kHz"
+}
 
 private fun formatDuration(seconds: Int): String {
     val m = seconds / 60
