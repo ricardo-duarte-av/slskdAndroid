@@ -3,8 +3,10 @@ package com.slskdandroid.feature.chat.impl
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +15,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,6 +32,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -45,12 +49,16 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -119,7 +127,7 @@ internal fun ChatScreen(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (thread != null) {
-                ThreadContent(thread)
+                ThreadContent(thread, onAction)
             } else {
                 ConversationList(uiState.list, uiState.avatars, onAction)
             }
@@ -223,7 +231,7 @@ private fun UserAvatar(bytes: ByteArray?, size: Dp, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun ThreadContent(thread: ThreadState) {
+private fun ThreadContent(thread: ThreadState, onAction: (ChatAction) -> Unit) {
     if (thread.loading) {
         CenteredContent { CircularProgressIndicator() }
         return
@@ -233,48 +241,84 @@ private fun ThreadContent(thread: ThreadState) {
         return
     }
     val listState = rememberLazyListState()
-    // Keep the newest message in view as the thread grows / a message is sent.
+    // Keep the newest message in view. The first positioning is an instant jump — animating from
+    // the top through every message on open is what caused the janky, low-fps load; subsequent new
+    // messages animate smoothly.
+    var didInitialScroll by remember { mutableStateOf(false) }
     LaunchedEffect(thread.messages.size) {
-        if (thread.messages.isNotEmpty()) listState.animateScrollToItem(thread.messages.lastIndex)
+        if (thread.messages.isEmpty()) return@LaunchedEffect
+        val target = thread.messages.lastIndex
+        if (didInitialScroll) {
+            listState.animateScrollToItem(target)
+        } else {
+            listState.scrollToItem(target)
+            didInitialScroll = true
+        }
     }
+    val haptics = LocalHapticFeedback.current
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // No stable key: slskd reuses id 0 for outgoing messages, so ids aren't unique.
-        items(thread.messages) { message -> MessageBubble(message) }
+        items(thread.messages) { message ->
+            val sender = if (message.isOutgoing) "You" else message.username
+            MessageCard(
+                message = message,
+                sender = sender,
+                onReply = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onAction(ChatAction.DraftChanged("[$sender] --> "))
+                },
+            )
+        }
     }
 }
 
+/**
+ * A full-width card for a single message: a header row with the sender and time, then the body.
+ * Outgoing and incoming messages take distinct container colors from the Expressive palette.
+ * Long-pressing seeds the input box with a reply prefix ([onReply]).
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MessageBubble(message: PrivateMessage) {
+private fun MessageCard(message: PrivateMessage, sender: String, onReply: () -> Unit) {
     val outgoing = message.isOutgoing
-    val bubbleColor =
-        if (outgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-    val textColor =
-        if (outgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-        horizontalArrangement = if (outgoing) Arrangement.End else Arrangement.Start,
+    val containerColor =
+        if (outgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+    val contentColor =
+        if (outgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = onReply),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
     ) {
-        Surface(
-            color = bubbleColor,
-            shape = MaterialTheme.shapes.large,
-            modifier = Modifier.widthIn(max = 300.dp),
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(message.message, style = MaterialTheme.typography.bodyMedium, color = textColor)
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    sender,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor,
+                    modifier = Modifier.weight(1f),
+                )
                 message.timestampMillis?.let { millis ->
                     Text(
                         formatTime(millis),
                         style = MaterialTheme.typography.labelSmall,
-                        color = textColor.copy(alpha = 0.7f),
-                        modifier = Modifier.align(Alignment.End),
+                        color = contentColor.copy(alpha = 0.7f),
                     )
                 }
             }
+            Spacer(Modifier.height(4.dp))
+            Text(message.message, style = MaterialTheme.typography.bodyMedium, color = contentColor)
         }
     }
 }

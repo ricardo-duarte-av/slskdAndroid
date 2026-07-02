@@ -1,7 +1,9 @@
 package com.slskdandroid.feature.rooms.impl
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,6 +29,8 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,6 +56,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -115,7 +122,7 @@ internal fun RoomsScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 search != null -> SearchContent(search, onAction)
-                open != null -> RoomContent(open, onUserInfo)
+                open != null -> RoomContent(open, onAction, onUserInfo)
                 else -> RoomList(uiState.list, onAction)
             }
         }
@@ -245,7 +252,7 @@ private fun RoomRow(name: String, onOpen: () -> Unit, onLeave: () -> Unit) {
 }
 
 @Composable
-private fun RoomContent(open: OpenRoom, onUserInfo: (String) -> Unit) {
+private fun RoomContent(open: OpenRoom, onAction: (RoomsAction) -> Unit, onUserInfo: (String) -> Unit) {
     if (open.loading && open.messages.isEmpty()) {
         CenteredContent { CircularProgressIndicator() }
         return
@@ -259,13 +266,24 @@ private fun RoomContent(open: OpenRoom, onUserInfo: (String) -> Unit) {
         open.users.orEmpty().associate { it.username to it.countryCode }
     }
     val listState = rememberLazyListState()
+    // The first positioning is an instant jump — animating from the top through every message on
+    // open is what caused the janky, low-fps load; later messages animate smoothly.
+    var didInitialScroll by remember { mutableStateOf(false) }
     LaunchedEffect(open.messages.size) {
-        if (open.messages.isNotEmpty()) listState.animateScrollToItem(open.messages.lastIndex)
+        if (open.messages.isEmpty()) return@LaunchedEffect
+        val target = open.messages.lastIndex
+        if (didInitialScroll) {
+            listState.animateScrollToItem(target)
+        } else {
+            listState.scrollToItem(target)
+            didInitialScroll = true
+        }
     }
+    val haptics = LocalHapticFeedback.current
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // No stable key: room messages have no id and senders/timestamps can repeat.
@@ -274,45 +292,70 @@ private fun RoomContent(open: OpenRoom, onUserInfo: (String) -> Unit) {
                 message = message,
                 countryCode = countries[message.username],
                 onSenderClick = { onUserInfo(message.username) },
+                onReply = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onAction(RoomsAction.DraftChanged("[${message.username}] --> "))
+                },
             )
         }
     }
 }
 
+/**
+ * A full-width card for one room message: a header row with the (tappable) sender and time, then
+ * the body. The user's own messages take the primary container to stand out from other members'.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MessageItem(message: RoomMessage, countryCode: String?, onSenderClick: () -> Unit) {
-    val nameColor =
-        if (message.isSelf) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Tapping the sender (flag + name) opens their profile in the Users tab.
-            Row(
-                modifier = Modifier.weight(1f, fill = false).clickable(onClick = onSenderClick),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                countryFlag(countryCode)?.let {
-                    Text(it, style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(6.dp))
+private fun MessageItem(
+    message: RoomMessage,
+    countryCode: String?,
+    onSenderClick: () -> Unit,
+    onReply: () -> Unit,
+) {
+    val containerColor =
+        if (message.isSelf) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
+    val contentColor =
+        if (message.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onClick = {}, onLongClick = onReply),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Tapping the sender (flag + name) opens their profile in the Users tab.
+                Row(
+                    modifier = Modifier.weight(1f, fill = false).clickable(onClick = onSenderClick),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    countryFlag(countryCode)?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        message.username,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                Text(
-                    message.username,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = nameColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                message.timestampMillis?.let {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        formatTime(it),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor.copy(alpha = 0.7f),
+                    )
+                }
             }
-            message.timestampMillis?.let {
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    formatTime(it),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Spacer(Modifier.height(4.dp))
+            Text(message.message, style = MaterialTheme.typography.bodyMedium, color = contentColor)
         }
-        Text(message.message, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
