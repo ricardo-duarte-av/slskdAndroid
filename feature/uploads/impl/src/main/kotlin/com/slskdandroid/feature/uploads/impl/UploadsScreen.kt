@@ -54,7 +54,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.TransferItem
+import com.slskdandroid.core.designsystem.component.TransferPhase
+import com.slskdandroid.core.designsystem.component.TransferStatusLine
 import com.slskdandroid.core.designsystem.component.nestedCardColor
+import com.slskdandroid.core.designsystem.component.transferStatusOf
 import com.slskdandroid.core.model.Upload
 import com.slskdandroid.core.model.UploadState
 import java.util.Locale
@@ -270,6 +274,12 @@ private fun UserCard(
                 onUserInfo = onUserInfo,
                 onChatUser = onChatUser,
             )
+            TransferStatusLine(
+                status = transferStatusOf(
+                    user.directories.flatMap { it.uploads }.map { it.toTransferItem() },
+                ),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+            )
             if (!collapsed) {
                 Column(
                     modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
@@ -299,6 +309,10 @@ private fun DirectoryCard(
                 directory = dir.directory,
                 collapsed = dirCollapsed,
                 onToggle = { onAction(UploadsAction.ToggleDirectoryCollapse(username, dir.directory)) },
+            )
+            TransferStatusLine(
+                status = transferStatusOf(dir.uploads.map { it.toTransferItem() }),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 6.dp),
             )
             if (!dirCollapsed) {
                 Column(
@@ -506,6 +520,16 @@ private fun stateColor(state: UploadState): Color = when (state) {
     UploadState.Queued -> MaterialTheme.colorScheme.tertiary
     UploadState.Failed -> MaterialTheme.colorScheme.error
     UploadState.Unknown -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+private fun Upload.toTransferItem(): TransferItem = TransferItem(state.toTransferPhase(), percentComplete)
+
+private fun UploadState.toTransferPhase(): TransferPhase = when (this) {
+    UploadState.Queued -> TransferPhase.Queued
+    UploadState.InProgress -> TransferPhase.InProgress
+    UploadState.Completed -> TransferPhase.Completed
+    UploadState.Failed -> TransferPhase.Failed
+    UploadState.Unknown -> TransferPhase.Unknown
 }
 
 /** A compact, state-appropriate one-liner: state + size/progress/speed/queue position. */

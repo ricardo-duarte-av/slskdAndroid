@@ -54,7 +54,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.model.Download
 import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.TransferItem
+import com.slskdandroid.core.designsystem.component.TransferPhase
+import com.slskdandroid.core.designsystem.component.TransferStatusLine
 import com.slskdandroid.core.designsystem.component.nestedCardColor
+import com.slskdandroid.core.designsystem.component.transferStatusOf
 import com.slskdandroid.core.model.DownloadState
 import java.util.Locale
 
@@ -281,6 +285,12 @@ private fun UserCard(
                 onUserInfo = onUserInfo,
                 onChatUser = onChatUser,
             )
+            TransferStatusLine(
+                status = transferStatusOf(
+                    user.directories.flatMap { it.downloads }.map { it.toTransferItem() },
+                ),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+            )
             if (!collapsed) {
                 Column(
                     modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
@@ -310,6 +320,10 @@ private fun DirectoryCard(
                 directory = dir.directory,
                 collapsed = dirCollapsed,
                 onToggle = { onAction(DownloadsAction.ToggleDirectoryCollapse(username, dir.directory)) },
+            )
+            TransferStatusLine(
+                status = transferStatusOf(dir.downloads.map { it.toTransferItem() }),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 2.dp, bottom = 6.dp),
             )
             if (!dirCollapsed) {
                 Column(
@@ -525,6 +539,16 @@ private fun stateColor(state: DownloadState): Color = when (state) {
     DownloadState.Queued -> MaterialTheme.colorScheme.tertiary
     DownloadState.Failed -> MaterialTheme.colorScheme.error
     DownloadState.Unknown -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+private fun Download.toTransferItem(): TransferItem = TransferItem(state.toTransferPhase(), percentComplete)
+
+private fun DownloadState.toTransferPhase(): TransferPhase = when (this) {
+    DownloadState.Queued -> TransferPhase.Queued
+    DownloadState.InProgress -> TransferPhase.InProgress
+    DownloadState.Completed -> TransferPhase.Completed
+    DownloadState.Failed -> TransferPhase.Failed
+    DownloadState.Unknown -> TransferPhase.Unknown
 }
 
 /** A compact, state-appropriate one-liner: state label + size/progress/speed/queue position. */
