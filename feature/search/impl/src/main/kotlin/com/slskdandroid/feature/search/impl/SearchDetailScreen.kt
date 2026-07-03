@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -54,12 +53,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.model.SearchResultFile
 import kotlin.math.min
 
@@ -209,26 +208,6 @@ private fun LoadedResults(
     }
 }
 
-/**
- * The nested result cards keep a single hue and deepen in tonality as you descend
- * peer (0) → directory (1) → file (2), using Material 3's surface tonal ladder (subtly
- * primary-tinted under dynamic color). To restyle the whole hierarchy — e.g. to an accent tint —
- * change only this function and [depthShape].
- */
-@Composable
-private fun depthContainerColor(depth: Int): Color = when (depth) {
-    0 -> MaterialTheme.colorScheme.surfaceContainerLow
-    1 -> MaterialTheme.colorScheme.surfaceContainerHigh
-    else -> MaterialTheme.colorScheme.surfaceContainerHighest
-}
-
-/** Corner radius tightens as cards nest deeper, reinforcing the sense of containment. */
-private fun depthShape(depth: Int) = when (depth) {
-    0 -> RoundedCornerShape(24.dp)
-    1 -> RoundedCornerShape(18.dp)
-    else -> RoundedCornerShape(14.dp)
-}
-
 /** A peer (depth 0): the outermost card. Holds the peer header and, when expanded, its folders. */
 @Composable
 private fun PeerCard(
@@ -239,9 +218,8 @@ private fun PeerCard(
     onChatUser: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        color = depthContainerColor(0),
-        shape = depthShape(0),
+    DepthCard(
+        depth = 0,
         modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
     ) {
         Column(modifier = Modifier.animateContentSize()) {
@@ -273,9 +251,8 @@ private fun DirectoryCard(
     dir: ShownDirectory,
     onAction: (SearchDetailAction) -> Unit,
 ) {
-    Surface(
-        color = depthContainerColor(1),
-        shape = depthShape(1),
+    DepthCard(
+        depth = 1,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.animateContentSize()) {
@@ -301,9 +278,8 @@ private fun FileCard(
     shown: ShownFile,
     onAction: (SearchDetailAction) -> Unit,
 ) {
-    Surface(
-        color = depthContainerColor(2),
-        shape = depthShape(2),
+    DepthCard(
+        depth = 2,
         modifier = Modifier.fillMaxWidth(),
     ) {
         FileRow(username = username, shown = shown, onAction = onAction)

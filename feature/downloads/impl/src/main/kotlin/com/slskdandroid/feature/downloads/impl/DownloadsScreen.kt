@@ -1,8 +1,8 @@
 package com.slskdandroid.feature.downloads.impl
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -52,7 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.model.Download
+import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.nestedCardColor
 import com.slskdandroid.core.model.DownloadState
 import java.util.Locale
 
@@ -235,57 +237,113 @@ private fun DownloadsList(
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
 ) {
+    // Each peer is a nested card (peer → directory → file), matching Search and Uploads. The peer
+    // is the lazy-item boundary, so list virtualization is preserved.
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp),
+        contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        uiState.users.forEach { user ->
-            val collapsed = user.username in uiState.collapsedUsers
-            item(key = "user-${user.username}") {
-                PeerHeader(
-                    username = user.username,
-                    fileCount = user.fileCount,
-                    collapsed = collapsed,
-                    onToggle = { onAction(DownloadsAction.ToggleCollapse(user.username)) },
-                    onBrowseUser = onBrowseUser,
-                    onUserInfo = onUserInfo,
-                    onChatUser = onChatUser,
-                    modifier = Modifier.animateItem(),
-                )
-            }
+        items(uiState.users, key = { "user-${it.username}" }) { user ->
+            UserCard(
+                user = user,
+                uiState = uiState,
+                onAction = onAction,
+                onBrowseUser = onBrowseUser,
+                onUserInfo = onUserInfo,
+                onChatUser = onChatUser,
+                modifier = Modifier.animateItem(),
+            )
+        }
+    }
+}
+
+/** A peer (depth 0): the outermost card. Holds the peer header and, when expanded, its folders. */
+@Composable
+private fun UserCard(
+    user: UserDownloads,
+    uiState: DownloadsUiState,
+    onAction: (DownloadsAction) -> Unit,
+    onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val collapsed = user.username in uiState.collapsedUsers
+    DepthCard(depth = 0, modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Column(modifier = Modifier.animateContentSize()) {
+            PeerHeader(
+                username = user.username,
+                fileCount = user.fileCount,
+                collapsed = collapsed,
+                onToggle = { onAction(DownloadsAction.ToggleCollapse(user.username)) },
+                onBrowseUser = onBrowseUser,
+                onUserInfo = onUserInfo,
+                onChatUser = onChatUser,
+            )
             if (!collapsed) {
-                user.directories.forEach { dir ->
-                    val dirCollapsed =
-                        directoryKey(user.username, dir.directory) in uiState.collapsedDirectories
-                    item(key = "dir-${user.username}-${dir.directory}") {
-                        DirectoryHeader(
-                            directory = dir.directory,
-                            collapsed = dirCollapsed,
-                            onToggle = {
-                                onAction(
-                                    DownloadsAction.ToggleDirectoryCollapse(
-                                        user.username,
-                                        dir.directory,
-                                    ),
-                                )
-                            },
-                            modifier = Modifier.animateItem(),
-                        )
-                    }
-                    if (!dirCollapsed) {
-                        items(dir.downloads, key = { it.id }) { download ->
-                            DownloadRow(
-                                download = download,
-                                selected = download.id in uiState.selectedIds,
-                                inSelectionMode = uiState.inSelectionMode,
-                                onAction = onAction,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
+                Column(
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    user.directories.forEach { dir ->
+                        DirectoryCard(user.username, dir, uiState, onAction)
                     }
                 }
             }
         }
+    }
+}
+
+/** A folder (depth 1): a card nested inside its peer. Holds the folder header and its files. */
+@Composable
+private fun DirectoryCard(
+    username: String,
+    dir: DirectoryDownloads,
+    uiState: DownloadsUiState,
+    onAction: (DownloadsAction) -> Unit,
+) {
+    val dirCollapsed = directoryKey(username, dir.directory) in uiState.collapsedDirectories
+    DepthCard(depth = 1, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.animateContentSize()) {
+            DirectoryHeader(
+                directory = dir.directory,
+                collapsed = dirCollapsed,
+                onToggle = { onAction(DownloadsAction.ToggleDirectoryCollapse(username, dir.directory)) },
+            )
+            if (!dirCollapsed) {
+                Column(
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    dir.downloads.forEach { download ->
+                        DownloadCard(
+                            download = download,
+                            selected = download.id in uiState.selectedIds,
+                            inSelectionMode = uiState.inSelectionMode,
+                            onAction = onAction,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A transfer (depth 2): the innermost bubble; the tonal color yields to a highlight when selected. */
+@Composable
+private fun DownloadCard(
+    download: Download,
+    selected: Boolean,
+    inSelectionMode: Boolean,
+    onAction: (DownloadsAction) -> Unit,
+) {
+    DepthCard(
+        depth = 2,
+        modifier = Modifier.fillMaxWidth(),
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else nestedCardColor(2),
+    ) {
+        DownloadRow(download, selected, inSelectionMode, onAction)
     }
 }
 
@@ -414,9 +472,6 @@ private fun DownloadRow(
     onAction: (DownloadsAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val background =
-        if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -426,8 +481,7 @@ private fun DownloadRow(
                 },
                 onLongClick = { onAction(DownloadsAction.StartSelection(download.id)) },
             )
-            .background(background)
-            .padding(start = 28.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (inSelectionMode) {
