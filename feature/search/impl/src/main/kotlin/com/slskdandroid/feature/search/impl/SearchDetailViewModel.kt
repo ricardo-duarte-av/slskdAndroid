@@ -38,8 +38,8 @@ class SearchDetailViewModel @Inject constructor(
     private val options = MutableStateFlow(SearchOptions.Default)
     private val interaction = MutableStateFlow(Interaction())
 
-    // Streams (and reconciles) the search's responses over the hub only while the screen is
-    // subscribed, so the SignalR connection isn't held open off-screen.
+    // Polls the search's responses only while the screen is subscribed, so we stop hitting the
+    // server once the detail screen is off-screen.
     private val baseFlow: Flow<BaseLoad> = searchRepository.observeSearch(searchId)
         .map<SearchProgress, BaseLoad> { BaseLoad.Loaded(it.responses, it.isComplete) }
         .catch { emit(BaseLoad.Error(it.message ?: "Couldn't load results")) }

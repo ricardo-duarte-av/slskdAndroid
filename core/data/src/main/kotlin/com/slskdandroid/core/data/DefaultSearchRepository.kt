@@ -4,8 +4,6 @@ import com.slskdandroid.core.common.IoDispatcher
 import com.slskdandroid.core.model.Search
 import com.slskdandroid.core.model.SearchResponse
 import com.slskdandroid.core.model.SearchResultFile
-import com.slskdandroid.core.network.SearchHub
-import com.slskdandroid.core.network.SearchHubEvent
 import com.slskdandroid.core.network.SlskdApi
 import com.slskdandroid.core.network.model.DirectoryContentsRequest
 import com.slskdandroid.core.network.model.NetworkFile
@@ -13,22 +11,17 @@ import com.slskdandroid.core.network.model.NetworkSearch
 import com.slskdandroid.core.network.model.NetworkSearchResponse
 import com.slskdandroid.core.network.model.StartSearchRequest
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 internal class DefaultSearchRepository @Inject constructor(
     private val api: SlskdApi,
-    private val searchHub: SearchHub,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : SearchRepository {
 
@@ -49,42 +42,32 @@ internal class DefaultSearchRepository @Inject constructor(
     override suspend fun getSearch(id: String): Search =
         withContext(ioDispatcher) { api.getSearch(id).toModel() }
 
-    override fun observeSearch(id: String): Flow<SearchProgress> = channelFlow {
-        val responsesByUser = ConcurrentHashMap<String, SearchResponse>()
+    override fun observeSearch(id: String): Flow<SearchProgress> = flow {
+        // Polls the search + its responses over REST until slskd reports it complete. slskd's
+        // `/responses` endpoint returns the accumulated responses (keyed by peer, deduped) at any
+        // point during an in-progress search, so each poll yields a growing snapshot. We poll
+        // rather than stream the SignalR search hub: the Microsoft SignalR Java client's
+        // long-polling handshake fails against slskd when the hub is actively broadcasting (it
+        // batches the handshake response with hub messages), which broke opening an ongoing search.
+        var emittedOnce = false
+        while (currentCoroutineContext().isActive) {
+            val progress = runCatching {
+                val search = api.getSearch(id)
+                val responses = api.getSearchResponses(id).map { it.toModel() }
+                SearchProgress(responses, isComplete = search.isComplete)
+            }.onFailure {
+                // Surface the first failure (nothing shown yet); tolerate transient poll errors
+                // once results are on screen and retry on the next tick.
+                if (!emittedOnce) throw it
+            }.getOrNull()
 
-        // If the search already finished (e.g. opened from history), the hub won't re-broadcast,
-        // so resolve it straight from REST and complete.
-        val current = runCatching { api.getSearch(id) }.getOrNull()
-        if (current?.isComplete == true) {
-            api.getSearchResponses(id).forEach { responsesByUser[it.username] = it.toModel() }
-            send(SearchProgress(responsesByUser.values.toList(), isComplete = true))
-            close()
-            return@channelFlow
-        }
-
-        send(SearchProgress(emptyList(), isComplete = false))
-
-        launch {
-            searchHub.events().collect { event ->
-                when (event) {
-                    is SearchHubEvent.Response -> if (event.searchId == id) {
-                        val model = event.response.toModel()
-                        responsesByUser[model.username] = model
-                        send(SearchProgress(responsesByUser.values.toList(), isComplete = false))
-                    }
-
-                    is SearchHubEvent.Update -> if (event.searchId == id && event.isComplete) {
-                        runCatching { api.getSearchResponses(id) }
-                            .getOrNull()
-                            ?.forEach { responsesByUser[it.username] = it.toModel() }
-                        send(SearchProgress(responsesByUser.values.toList(), isComplete = true))
-                        close()
-                    }
-                }
+            if (progress != null) {
+                emittedOnce = true
+                emit(progress)
+                if (progress.isComplete) return@flow
             }
+            delay(POLL_INTERVAL_MS)
         }
-
-        awaitClose()
     }.flowOn(ioDispatcher)
 
     override suspend fun getResponses(id: String): List<SearchResponse> =
