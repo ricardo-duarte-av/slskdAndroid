@@ -1,6 +1,7 @@
 package com.slskdandroid.feature.settings.impl
 
 import com.slskdandroid.core.data.SettingsRepository
+import com.slskdandroid.core.model.CardTintStyle
 import com.slskdandroid.core.model.NotificationSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -8,6 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 class FakeSettingsRepository : SettingsRepository {
     val state = MutableStateFlow(NotificationSettings())
     override val notificationSettings = state
+
+    val tintState = MutableStateFlow(CardTintStyle.Default)
+    override val cardTintStyle = tintState
 
     override suspend fun setNotificationsEnabled(enabled: Boolean) {
         state.value = state.value.copy(enabled = enabled)
@@ -19,5 +23,9 @@ class FakeSettingsRepository : SettingsRepository {
             NotificationSettings.MAX_INTERVAL_SECONDS,
         )
         state.value = state.value.copy(checkIntervalSeconds = clamped)
+    }
+
+    override suspend fun setCardTintStyle(style: CardTintStyle) {
+        tintState.value = style
     }
 }
