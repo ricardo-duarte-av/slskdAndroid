@@ -2,6 +2,7 @@ package com.slskdandroid.core.data
 
 import com.slskdandroid.core.network.SlskdApi
 import com.slskdandroid.core.network.model.DirectoryContentsRequest
+import com.slskdandroid.core.network.model.NetworkApplicationInfo
 import com.slskdandroid.core.network.model.NetworkAvailableRoom
 import com.slskdandroid.core.network.model.NetworkBrowseResponse
 import com.slskdandroid.core.network.model.NetworkConversation
@@ -31,6 +32,7 @@ open class FakeSlskdApi : SlskdApi {
     // Value-returning endpoints fail via an expression body. Unit-returning endpoints MUST use a
     // block body so their return type stays Unit — an expression body would infer Nothing, which a
     // Unit-returning override in a test cannot legally widen.
+    override suspend fun getApplicationInfo(): NetworkApplicationInfo = nope("getApplicationInfo")
     override suspend fun getSearches(): List<NetworkSearch> = nope("getSearches")
     override suspend fun startSearch(request: StartSearchRequest): NetworkSearch = nope("startSearch")
     override suspend fun getSearch(id: String): NetworkSearch = nope("getSearch")
