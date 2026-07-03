@@ -1,5 +1,6 @@
 package com.slskdandroid.feature.search.impl
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -34,7 +35,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.model.SearchResultFile
 import kotlin.math.min
 
@@ -172,7 +173,8 @@ private fun LoadedResults(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp),
+        contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(key = "options") { OptionsPanel(options, onAction) }
 
@@ -182,35 +184,18 @@ private fun LoadedResults(
             }
         }
 
-        phase.responses.forEach { response ->
-            item(key = "peer-${response.username}") {
-                PeerHeader(
-                    response = response,
-                    onToggle = { onAction(SearchDetailAction.TogglePeer(response.username)) },
-                    onBrowseUser = onBrowseUser,
-                    onUserInfo = onUserInfo,
-                    onChatUser = onChatUser,
-                    modifier = Modifier.animateItem(),
-                )
-            }
-            if (!response.folded) {
-                response.directories.forEach { dir ->
-                    item(key = "dir-${response.username}-${dir.directory}") {
-                        DirectoryHeader(response.username, dir, onAction, Modifier.animateItem())
-                    }
-                    if (!dir.collapsed) {
-                        items(dir.files, key = { "${response.username}-${it.file.filename}" }) { shown ->
-                            FileRow(
-                                username = response.username,
-                                shown = shown,
-                                onAction = onAction,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                    }
-                }
-            }
-            item(key = "div-${response.username}") { HorizontalDivider(Modifier.animateItem()) }
+        // Each peer is a single card; its folders and files are cards nested within it (see
+        // PeerCard). Keeping the peer as the lazy-item boundary preserves list virtualization
+        // while giving the nested-card hierarchy.
+        items(phase.responses, key = { "peer-${it.username}" }) { response ->
+            PeerCard(
+                response = response,
+                onAction = onAction,
+                onBrowseUser = onBrowseUser,
+                onUserInfo = onUserInfo,
+                onChatUser = onChatUser,
+                modifier = Modifier.animateItem(),
+            )
         }
 
         item(key = "pager") {
@@ -220,6 +205,84 @@ private fun LoadedResults(
                 onShowMore = { onAction(SearchDetailAction.ShowMore) },
             )
         }
+    }
+}
+
+/** A peer (depth 0): the outermost card. Holds the peer header and, when expanded, its folders. */
+@Composable
+private fun PeerCard(
+    response: ShownResponse,
+    onAction: (SearchDetailAction) -> Unit,
+    onBrowseUser: (String) -> Unit,
+    onUserInfo: (String) -> Unit,
+    onChatUser: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    DepthCard(
+        depth = 0,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
+    ) {
+        Column(modifier = Modifier.animateContentSize()) {
+            PeerHeader(
+                response = response,
+                onToggle = { onAction(SearchDetailAction.TogglePeer(response.username)) },
+                onBrowseUser = onBrowseUser,
+                onUserInfo = onUserInfo,
+                onChatUser = onChatUser,
+            )
+            if (!response.folded) {
+                Column(
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    response.directories.forEach { dir ->
+                        DirectoryCard(response.username, dir, onAction)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A folder (depth 1): a card nested inside its peer. Holds the folder header and its files. */
+@Composable
+private fun DirectoryCard(
+    username: String,
+    dir: ShownDirectory,
+    onAction: (SearchDetailAction) -> Unit,
+) {
+    DepthCard(
+        depth = 1,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.animateContentSize()) {
+            DirectoryHeader(username, dir, onAction)
+            if (!dir.collapsed) {
+                Column(
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    dir.files.forEach { shown ->
+                        FileCard(username, shown, onAction)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** A file (depth 2): the innermost bubble. */
+@Composable
+private fun FileCard(
+    username: String,
+    shown: ShownFile,
+    onAction: (SearchDetailAction) -> Unit,
+) {
+    DepthCard(
+        depth = 2,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        FileRow(username = username, shown = shown, onAction = onAction)
     }
 }
 
@@ -449,7 +512,7 @@ private fun FileRow(
 ) {
     val file = shown.file
     Row(
-        modifier = modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(
