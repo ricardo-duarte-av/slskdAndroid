@@ -26,6 +26,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.slskdandroid.core.data.SettingsRepository
 import com.slskdandroid.core.designsystem.theme.SlskdTheme
+import com.slskdandroid.core.model.CardTintStyle
 import com.slskdandroid.feature.connection.api.CONNECTION_SETUP_ROUTE
 import com.slskdandroid.feature.connection.impl.connectionSetupScreen
 import com.slskdandroid.navigation.SlskdApp
@@ -51,7 +52,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         observeNotificationService()
         setContent {
-            SlskdTheme {
+            val cardTintStyle = viewModel.cardTintStyle.collectAsStateWithLifecycle().value
+            SlskdTheme(useAccentCards = cardTintStyle == CardTintStyle.Accent) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,

@@ -6,7 +6,7 @@ import com.slskdandroid.core.data.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -16,13 +16,20 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
-    val uiState: StateFlow<SettingsUiState> = settingsRepository.notificationSettings
-        .map { SettingsUiState(it.enabled, it.checkIntervalSeconds) }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = SettingsUiState(),
+    val uiState: StateFlow<SettingsUiState> = combine(
+        settingsRepository.notificationSettings,
+        settingsRepository.cardTintStyle,
+    ) { notifications, cardTintStyle ->
+        SettingsUiState(
+            notificationsEnabled = notifications.enabled,
+            checkIntervalSeconds = notifications.checkIntervalSeconds,
+            cardTintStyle = cardTintStyle,
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = SettingsUiState(),
+    )
 
     fun onAction(action: SettingsAction) {
         when (action) {
@@ -32,6 +39,10 @@ class SettingsViewModel @Inject constructor(
 
             is SettingsAction.SetCheckIntervalSeconds -> viewModelScope.launch {
                 settingsRepository.setCheckIntervalSeconds(action.seconds)
+            }
+
+            is SettingsAction.SetCardTintStyle -> viewModelScope.launch {
+                settingsRepository.setCardTintStyle(action.style)
             }
         }
     }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -30,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.model.CardTintStyle
 import com.slskdandroid.core.model.NotificationSettings
 
 @Composable
@@ -76,6 +81,44 @@ internal fun SettingsScreen(
                     seconds = uiState.checkIntervalSeconds,
                     onSecondsChange = { onAction(SettingsAction.SetCheckIntervalSeconds(it)) },
                 )
+                HorizontalDivider()
+            }
+            CardStyleSetting(
+                style = uiState.cardTintStyle,
+                onStyleChange = { onAction(SettingsAction.SetCardTintStyle(it)) },
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CardStyleSetting(
+    style: CardTintStyle,
+    onStyleChange: (CardTintStyle) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
+        Text("Card style", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "How the nested result and transfer cards are tinted. Neutral uses subtle surface " +
+                "shades; Accent tints them with the theme color, deepening as they nest.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        val options = listOf(
+            CardTintStyle.Neutral to "Neutral",
+            CardTintStyle.Accent to "Accent",
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, (value, label) ->
+                SegmentedButton(
+                    selected = style == value,
+                    onClick = { onStyleChange(value) },
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                ) {
+                    Text(label)
+                }
             }
         }
     }
