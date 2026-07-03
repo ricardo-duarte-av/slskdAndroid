@@ -13,8 +13,8 @@ data class SearchProgress(
 
 /**
  * Coordinates Soulseek searches against the slskd backend. Searches are persisted server-side:
- * [observeSearches] polls the list, [startSearch] kicks a new one off, and [observeSearch] streams
- * one search's responses live over the SignalR hub (reconciling with REST on completion).
+ * [observeSearches] polls the list, [startSearch] kicks a new one off, and [observeSearch] polls
+ * one search's responses until it completes.
  */
 interface SearchRepository {
 
@@ -30,7 +30,7 @@ interface SearchRepository {
     /**
      * Streams the responses for an existing search [id]. If the search is already complete the flow
      * emits the final results once and completes; otherwise it emits a growing [SearchProgress] as
-     * peers respond and completes when slskd reports the search finished.
+     * peers respond (by polling REST) and completes when slskd reports the search finished.
      */
     fun observeSearch(id: String): Flow<SearchProgress>
 

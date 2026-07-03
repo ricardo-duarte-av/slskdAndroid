@@ -42,24 +42,6 @@
 }
 
 # ---------------------------------------------------------------------------
-# SignalR hub wire types — deserialized by the Microsoft SignalR Java client
-# with Gson via reflection (Unsafe), so field names must match slskd's JSON.
-# R8 must not rename or strip these members. See SearchHubEvent.kt.
-# ---------------------------------------------------------------------------
--keep class com.slskdandroid.core.network.Hub** { *; }
--keepclassmembers class com.slskdandroid.core.network.** {
-    <fields>;
-}
-
-# Gson (used by SignalR) — keep generic signatures and reflective access.
--keepattributes Signature, *Annotation*, EnclosingMethod
--keep class com.google.gson.reflect.TypeToken { *; }
--keep class * extends com.google.gson.reflect.TypeToken
--keepclassmembers,allowobfuscation class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
-
-# ---------------------------------------------------------------------------
 # Retrofit / OkHttp (mostly covered by their bundled consumer rules; these are
 # defensive for the bleeding-edge versions in use).
 # ---------------------------------------------------------------------------
@@ -71,8 +53,3 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
-
-# SignalR pulls in SLF4J / reactor; silence missing optional deps.
--dontwarn org.slf4j.**
--dontwarn io.reactivex.**
--dontwarn reactor.**
