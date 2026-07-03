@@ -54,6 +54,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.model.UserPresence
 import com.slskdandroid.core.model.UserProfile
 
@@ -61,6 +62,7 @@ import com.slskdandroid.core.model.UserProfile
 internal fun UsersRoute(
     onBrowseUser: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
     viewModel: UsersViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +71,7 @@ internal fun UsersRoute(
         onAction = viewModel::onAction,
         onBrowseUser = onBrowseUser,
         onChatUser = onChatUser,
+        onSettings = onSettings,
     )
 }
 
@@ -79,12 +82,13 @@ internal fun UsersScreen(
     onAction: (UsersAction) -> Unit,
     onBrowseUser: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     // While a user is open/loading, back returns to the prompt rather than leaving the tab.
     BackHandler(enabled = uiState !is UsersUiState.Idle) { onAction(UsersAction.Close) }
 
     Scaffold(
-        topBar = { UsersTopBar(uiState, onAction) },
+        topBar = { UsersTopBar(uiState, onAction, onSettings) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (uiState) {
@@ -116,7 +120,7 @@ internal fun UsersScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UsersTopBar(uiState: UsersUiState, onAction: (UsersAction) -> Unit) {
+private fun UsersTopBar(uiState: UsersUiState, onAction: (UsersAction) -> Unit, onSettings: () -> Unit) {
     val title = when (uiState) {
         is UsersUiState.Idle -> "Users"
         is UsersUiState.Loading -> uiState.username
@@ -130,6 +134,8 @@ private fun UsersTopBar(uiState: UsersUiState, onAction: (UsersAction) -> Unit) 
                 IconButton(onClick = { onAction(UsersAction.Close) }) {
                     Icon(Icons.Filled.Close, contentDescription = "Close user")
                 }
+            } else {
+                SettingsActionButton(onSettings)
             }
         },
     )

@@ -1,6 +1,7 @@
 package com.slskdandroid.core.network
 
 import com.slskdandroid.core.network.model.DirectoryContentsRequest
+import com.slskdandroid.core.network.model.NetworkApplicationInfo
 import com.slskdandroid.core.network.model.NetworkBrowseResponse
 import com.slskdandroid.core.network.model.NetworkAvailableRoom
 import com.slskdandroid.core.network.model.NetworkConversation
@@ -30,6 +31,10 @@ import retrofit2.http.Query
  * as features land. Confirm paths/payloads against the slskd Swagger spec.
  */
 interface SlskdApi {
+
+    /** The instance's state, including `user.username` (our own Soulseek username). */
+    @GET("api/v0/application")
+    suspend fun getApplicationInfo(): NetworkApplicationInfo
 
     @GET("api/v0/searches")
     suspend fun getSearches(): List<NetworkSearch>

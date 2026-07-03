@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.model.Download
+import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.model.DownloadState
 import java.util.Locale
 
@@ -60,6 +61,7 @@ internal fun DownloadsRoute(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,6 +71,7 @@ internal fun DownloadsRoute(
         onBrowseUser = onBrowseUser,
         onUserInfo = onUserInfo,
         onChatUser = onChatUser,
+        onSettings = onSettings,
     )
 }
 
@@ -80,6 +83,7 @@ internal fun DownloadsScreen(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     // While selecting, a system back press clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(DownloadsAction.ClearSelection) }
@@ -94,7 +98,7 @@ internal fun DownloadsScreen(
                     onRemove = { onAction(DownloadsAction.RemoveSelected) },
                 )
             } else {
-                TopAppBar(title = { Text("Downloads") })
+                TopAppBar(title = { Text("Downloads") }, actions = { SettingsActionButton(onSettings) })
             }
         },
     ) { padding ->

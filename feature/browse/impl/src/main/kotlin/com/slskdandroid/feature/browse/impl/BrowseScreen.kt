@@ -55,13 +55,15 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.SettingsActionButton
 
 @Composable
 internal fun BrowseRoute(
+    onSettings: () -> Unit,
     viewModel: BrowseViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    BrowseScreen(uiState = uiState, onAction = viewModel::onAction)
+    BrowseScreen(uiState = uiState, onAction = viewModel::onAction, onSettings = onSettings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,6 +71,7 @@ internal fun BrowseRoute(
 internal fun BrowseScreen(
     uiState: BrowseUiState,
     onAction: (BrowseAction) -> Unit,
+    onSettings: () -> Unit,
 ) {
     val phase = uiState.phase
 
@@ -79,7 +82,7 @@ internal fun BrowseScreen(
     }
 
     Scaffold(
-        topBar = { BrowseTopBar(phase, onAction) },
+        topBar = { BrowseTopBar(phase, onAction, onSettings) },
         bottomBar = {
             if (phase is BrowsePhase.Files && uiState.selectedCount > 0) {
                 SelectionBar(
@@ -134,14 +137,14 @@ internal fun BrowseScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BrowseTopBar(phase: BrowsePhase, onAction: (BrowseAction) -> Unit) {
+private fun BrowseTopBar(phase: BrowsePhase, onAction: (BrowseAction) -> Unit, onSettings: () -> Unit) {
     val closeAction: @Composable () -> Unit = {
         IconButton(onClick = { onAction(BrowseAction.CloseUser) }) {
             Icon(Icons.Filled.Close, contentDescription = "Close user")
         }
     }
     when (phase) {
-        BrowsePhase.Idle -> TopAppBar(title = { Text("Browse") })
+        BrowsePhase.Idle -> TopAppBar(title = { Text("Browse") }, actions = { SettingsActionButton(onSettings) })
 
         is BrowsePhase.Loading -> TopAppBar(title = { Text(phase.username) }, actions = { closeAction() })
         is BrowsePhase.Error -> TopAppBar(title = { Text(phase.username) }, actions = { closeAction() })

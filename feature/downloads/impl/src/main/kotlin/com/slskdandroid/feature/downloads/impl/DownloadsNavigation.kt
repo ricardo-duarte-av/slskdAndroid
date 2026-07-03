@@ -9,8 +9,14 @@ fun NavGraphBuilder.downloadsScreen(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     composable(route = DOWNLOADS_ROUTE) {
-        DownloadsRoute(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
+        DownloadsRoute(
+            onBrowseUser = onBrowseUser,
+            onUserInfo = onUserInfo,
+            onChatUser = onChatUser,
+            onSettings = onSettings,
+        )
     }
 }

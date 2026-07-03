@@ -35,11 +35,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.model.Search
 
 @Composable
 internal fun SearchListRoute(
     onOpenSearch: (String) -> Unit,
+    onSettings: () -> Unit,
     viewModel: SearchListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -52,6 +54,7 @@ internal fun SearchListRoute(
         uiState = uiState,
         onAction = viewModel::onAction,
         onOpenSearch = onOpenSearch,
+        onSettings = onSettings,
     )
 }
 
@@ -61,9 +64,10 @@ internal fun SearchListScreen(
     uiState: SearchListUiState,
     onAction: (SearchListAction) -> Unit,
     onOpenSearch: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Search") }) },
+        topBar = { TopAppBar(title = { Text("Search") }, actions = { SettingsActionButton(onSettings) }) },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             OutlinedTextField(

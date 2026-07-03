@@ -13,14 +13,14 @@ import com.slskdandroid.feature.chat.api.CHAT_USER_ROUTE
  * peer deep-link (`chat/{username}`) opened from the Users/Search/Downloads/Uploads "Chat" actions,
  * which lands on the new-message composer pre-filled with that peer.
  */
-fun NavGraphBuilder.chatScreen() {
+fun NavGraphBuilder.chatScreen(onSettings: () -> Unit) {
     composable(route = CHAT_ROUTE) {
-        ChatRoute()
+        ChatRoute(onSettings = onSettings)
     }
     composable(
         route = CHAT_USER_ROUTE,
         arguments = listOf(navArgument(CHAT_USER_ARG) { type = NavType.StringType }),
     ) {
-        ChatRoute()
+        ChatRoute(onSettings = onSettings)
     }
 }

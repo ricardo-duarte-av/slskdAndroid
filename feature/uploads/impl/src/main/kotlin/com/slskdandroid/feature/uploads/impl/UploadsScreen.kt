@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.model.Upload
 import com.slskdandroid.core.model.UploadState
 import java.util.Locale
@@ -61,6 +62,7 @@ internal fun UploadsRoute(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
     viewModel: UploadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -70,6 +72,7 @@ internal fun UploadsRoute(
         onBrowseUser = onBrowseUser,
         onUserInfo = onUserInfo,
         onChatUser = onChatUser,
+        onSettings = onSettings,
     )
 }
 
@@ -81,12 +84,13 @@ internal fun UploadsScreen(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     // While selecting, system back clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(UploadsAction.ClearSelection) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Uploads") }) },
+        topBar = { TopAppBar(title = { Text("Uploads") }, actions = { SettingsActionButton(onSettings) }) },
         bottomBar = {
             // Hidden until something is selected; sits above the app's bottom navigation.
             if (uiState.inSelectionMode) {

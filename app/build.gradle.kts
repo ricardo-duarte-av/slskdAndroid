@@ -31,8 +31,8 @@ android {
 
     defaultConfig {
         applicationId = "pt.aguiarvieira.androidslskd"
-        versionCode = 4
-        versionName = "0.1.3"
+        versionCode = 5
+        versionName = "0.1.4"
     }
 
     signingConfigs {
@@ -73,6 +73,7 @@ dependencies {
     implementation(projects.feature.chat.impl)
     implementation(projects.feature.users.impl)
     implementation(projects.feature.browse.impl)
+    implementation(projects.feature.settings.impl)
 
     implementation(projects.core.designsystem)
     implementation(projects.core.data)

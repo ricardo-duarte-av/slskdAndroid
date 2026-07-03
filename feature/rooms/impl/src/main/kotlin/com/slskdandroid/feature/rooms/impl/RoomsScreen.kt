@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.model.AvailableRoom
 import com.slskdandroid.core.model.RoomMessage
 import com.slskdandroid.core.model.RoomUser
@@ -73,10 +74,11 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun RoomsRoute(
     onUserInfo: (String) -> Unit,
+    onSettings: () -> Unit,
     viewModel: RoomsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    RoomsScreen(uiState = uiState, onAction = viewModel::onAction, onUserInfo = onUserInfo)
+    RoomsScreen(uiState = uiState, onAction = viewModel::onAction, onUserInfo = onUserInfo, onSettings = onSettings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,6 +87,7 @@ internal fun RoomsScreen(
     uiState: RoomsUiState,
     onAction: (RoomsAction) -> Unit,
     onUserInfo: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     val open = uiState.open
     val search = uiState.search
@@ -98,7 +101,7 @@ internal fun RoomsScreen(
             when {
                 search != null -> SimpleTopBar("Find rooms") { onAction(RoomsAction.CloseSearch) }
                 open != null -> RoomTopBar(open, onAction)
-                else -> TopAppBar(title = { Text("Rooms") })
+                else -> TopAppBar(title = { Text("Rooms") }, actions = { SettingsActionButton(onSettings) })
             }
         },
         bottomBar = {

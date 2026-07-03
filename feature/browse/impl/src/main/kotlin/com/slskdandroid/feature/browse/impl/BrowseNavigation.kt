@@ -12,14 +12,14 @@ import com.slskdandroid.feature.browse.api.BROWSE_USER_ROUTE
  * Wires the Browse routes into an app-level [NavGraphBuilder]: the typed-username landing and the
  * peer deep-link (`browse/{username}`) opened from Search/Downloads/Uploads.
  */
-fun NavGraphBuilder.browseScreen() {
+fun NavGraphBuilder.browseScreen(onSettings: () -> Unit) {
     composable(route = BROWSE_ROUTE) {
-        BrowseRoute()
+        BrowseRoute(onSettings = onSettings)
     }
     composable(
         route = BROWSE_USER_ROUTE,
         arguments = listOf(navArgument(BROWSE_USER_ARG) { type = NavType.StringType }),
     ) {
-        BrowseRoute()
+        BrowseRoute(onSettings = onSettings)
     }
 }

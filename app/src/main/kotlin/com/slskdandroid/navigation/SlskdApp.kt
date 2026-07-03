@@ -19,6 +19,8 @@ import com.slskdandroid.feature.rooms.impl.roomsScreen
 import com.slskdandroid.feature.search.api.searchDetailRoute
 import com.slskdandroid.feature.search.impl.searchDetailScreen
 import com.slskdandroid.feature.search.impl.searchListScreen
+import com.slskdandroid.feature.settings.api.SETTINGS_ROUTE
+import com.slskdandroid.feature.settings.impl.settingsScreen
 import com.slskdandroid.feature.uploads.impl.uploadsScreen
 import com.slskdandroid.feature.users.api.usersUserRoute
 import com.slskdandroid.feature.users.impl.usersScreen
@@ -77,8 +79,14 @@ fun SlskdApp(
                     launchSingleTop = true
                 }
             }
+            // Settings is reachable from every top-level screen's top bar. Keep it off the nav
+            // suite (it's not a section) but on the back stack so it pops back to the origin tab.
+            val onSettings: () -> Unit = {
+                navController.navigate(SETTINGS_ROUTE) { launchSingleTop = true }
+            }
             searchListScreen(
                 onOpenSearch = { id -> navController.navigate(searchDetailRoute(id)) },
+                onSettings = onSettings,
             )
             searchDetailScreen(
                 onBack = { navController.popBackStack() },
@@ -86,15 +94,17 @@ fun SlskdApp(
                 onUserInfo = onUserInfo,
                 onChatUser = onChatUser,
             )
-            downloadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
-            uploadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
-            roomsScreen(onUserInfo = onUserInfo)
-            chatScreen()
+            downloadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser, onSettings = onSettings)
+            uploadsScreen(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser, onSettings = onSettings)
+            roomsScreen(onUserInfo = onUserInfo, onSettings = onSettings)
+            chatScreen(onSettings = onSettings)
             usersScreen(
                 onBrowseUser = onBrowseUser,
                 onChatUser = onChatUser,
+                onSettings = onSettings,
             )
-            browseScreen()
+            browseScreen(onSettings = onSettings)
+            settingsScreen(onBack = { navController.popBackStack() })
         }
     }
 }

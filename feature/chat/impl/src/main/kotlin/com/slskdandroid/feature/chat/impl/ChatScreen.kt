@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.model.Conversation
 import com.slskdandroid.core.model.PrivateMessage
 import java.time.Instant
@@ -71,9 +72,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-internal fun ChatRoute(viewModel: ChatViewModel = hiltViewModel()) {
+internal fun ChatRoute(onSettings: () -> Unit, viewModel: ChatViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ChatScreen(uiState = uiState, onAction = viewModel::onAction)
+    ChatScreen(uiState = uiState, onAction = viewModel::onAction, onSettings = onSettings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,6 +82,7 @@ internal fun ChatRoute(viewModel: ChatViewModel = hiltViewModel()) {
 internal fun ChatScreen(
     uiState: ChatUiState,
     onAction: (ChatAction) -> Unit,
+    onSettings: () -> Unit,
 ) {
     val thread = uiState.thread
     // In a thread, system back returns to the conversation list rather than leaving the tab.
@@ -104,7 +106,7 @@ internal fun ChatScreen(
                     },
                 )
             } else {
-                TopAppBar(title = { Text("Chat") })
+                TopAppBar(title = { Text("Chat") }, actions = { SettingsActionButton(onSettings) })
             }
         },
         bottomBar = {

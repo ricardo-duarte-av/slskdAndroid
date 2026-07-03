@@ -8,9 +8,9 @@ import com.slskdandroid.feature.search.api.SEARCH_DETAIL_ROUTE
 import com.slskdandroid.feature.search.api.SEARCH_ROUTE
 
 /** Wires the Search list route into an app-level [NavGraphBuilder]. */
-fun NavGraphBuilder.searchListScreen(onOpenSearch: (String) -> Unit) {
+fun NavGraphBuilder.searchListScreen(onOpenSearch: (String) -> Unit, onSettings: () -> Unit) {
     composable(route = SEARCH_ROUTE) {
-        SearchListRoute(onOpenSearch = onOpenSearch)
+        SearchListRoute(onOpenSearch = onOpenSearch, onSettings = onSettings)
     }
 }
 

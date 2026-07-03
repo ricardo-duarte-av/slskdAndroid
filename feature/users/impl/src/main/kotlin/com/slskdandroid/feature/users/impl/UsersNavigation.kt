@@ -16,14 +16,15 @@ import com.slskdandroid.feature.users.api.USERS_USER_ROUTE
 fun NavGraphBuilder.usersScreen(
     onBrowseUser: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     composable(route = USERS_ROUTE) {
-        UsersRoute(onBrowseUser = onBrowseUser, onChatUser = onChatUser)
+        UsersRoute(onBrowseUser = onBrowseUser, onChatUser = onChatUser, onSettings = onSettings)
     }
     composable(
         route = USERS_USER_ROUTE,
         arguments = listOf(navArgument(USERS_USER_ARG) { type = NavType.StringType }),
     ) {
-        UsersRoute(onBrowseUser = onBrowseUser, onChatUser = onChatUser)
+        UsersRoute(onBrowseUser = onBrowseUser, onChatUser = onChatUser, onSettings = onSettings)
     }
 }

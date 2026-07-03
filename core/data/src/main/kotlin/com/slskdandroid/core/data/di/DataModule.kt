@@ -11,11 +11,13 @@ import com.slskdandroid.core.data.DefaultChatRepository
 import com.slskdandroid.core.data.DefaultDownloadsRepository
 import com.slskdandroid.core.data.DefaultRoomsRepository
 import com.slskdandroid.core.data.DefaultSearchRepository
+import com.slskdandroid.core.data.DefaultSettingsRepository
 import com.slskdandroid.core.data.DefaultUploadsRepository
 import com.slskdandroid.core.data.DefaultUsersRepository
 import com.slskdandroid.core.data.DownloadsRepository
 import com.slskdandroid.core.data.RoomsRepository
 import com.slskdandroid.core.data.SearchRepository
+import com.slskdandroid.core.data.SettingsRepository
 import com.slskdandroid.core.data.UploadsRepository
 import com.slskdandroid.core.data.UsersRepository
 import dagger.Binds
@@ -65,4 +67,8 @@ internal interface DataModule {
     fun bindsConnectionSettingsRepository(
         impl: DefaultConnectionSettingsRepository,
     ): ConnectionSettingsRepository
+
+    @Binds
+    @Singleton
+    fun bindsSettingsRepository(impl: DefaultSettingsRepository): SettingsRepository
 }

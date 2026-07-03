@@ -9,8 +9,14 @@ fun NavGraphBuilder.uploadsScreen(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
+    onSettings: () -> Unit,
 ) {
     composable(route = UPLOADS_ROUTE) {
-        UploadsRoute(onBrowseUser = onBrowseUser, onUserInfo = onUserInfo, onChatUser = onChatUser)
+        UploadsRoute(
+            onBrowseUser = onBrowseUser,
+            onUserInfo = onUserInfo,
+            onChatUser = onChatUser,
+            onSettings = onSettings,
+        )
     }
 }
