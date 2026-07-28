@@ -60,6 +60,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.formatBytes
 import com.slskdandroid.core.designsystem.component.asString
@@ -250,12 +251,14 @@ private fun FilterField(value: String, label: String, onChange: (String) -> Unit
 
 @Composable
 private fun DirectoryTree(rows: List<TreeRow>, onAction: (BrowseAction) -> Unit) {
+    ReadableWidth {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp),
-    ) {
-        items(rows, key = { it.path }) { row ->
-            TreeNodeRow(row, onAction, Modifier.animateItem())
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 16.dp),
+        ) {
+            items(rows, key = { it.path }) { row ->
+                TreeNodeRow(row, onAction, Modifier.animateItem())
+            }
         }
     }
 }
@@ -326,55 +329,57 @@ private fun TreeNodeRow(
 
 @Composable
 private fun FileList(phase: BrowsePhase.Files, onAction: (BrowseAction) -> Unit) {
+    ReadableWidth {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp),
-    ) {
-        item(key = "path-header") {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TriStateCheckbox(
-                    state = when (phase.selection) {
-                        TriState.None -> ToggleableState.Off
-                        TriState.Some -> ToggleableState.Indeterminate
-                        TriState.All -> ToggleableState.On
-                    },
-                    onClick = {
-                        onAction(
-                            BrowseAction.SetAllSelection(
-                                files = phase.files.map { it.file },
-                                selected = phase.selection != TriState.All,
-                            ),
-                        )
-                    },
-                )
-                Text(
-                    phase.directory,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                )
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 16.dp),
+        ) {
+            item(key = "path-header") {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TriStateCheckbox(
+                        state = when (phase.selection) {
+                            TriState.None -> ToggleableState.Off
+                            TriState.Some -> ToggleableState.Indeterminate
+                            TriState.All -> ToggleableState.On
+                        },
+                        onClick = {
+                            onAction(
+                                BrowseAction.SetAllSelection(
+                                    files = phase.files.map { it.file },
+                                    selected = phase.selection != TriState.All,
+                                ),
+                            )
+                        },
+                    )
+                    Text(
+                        phase.directory,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                    )
+                }
+                HorizontalDivider()
             }
-            HorizontalDivider()
-        }
 
-        if (phase.files.isEmpty()) {
-            item(key = "no-match") {
-                Text(
-                    stringResource(R.string.browse_no_files_match, phase.filter),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().padding(24.dp),
-                )
+            if (phase.files.isEmpty()) {
+                item(key = "no-match") {
+                    Text(
+                        stringResource(R.string.browse_no_files_match, phase.filter),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    )
+                }
             }
-        }
 
-        items(phase.files, key = { it.file.filename }) { shown ->
-            FileRow(shown, onAction)
+            items(phase.files, key = { it.file.filename }) { shown ->
+                FileRow(shown, onAction)
+            }
         }
     }
 }

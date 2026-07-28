@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.designsystem.component.qualityLabelLocalized
 import com.slskdandroid.core.designsystem.component.formatDurationLocalized
@@ -200,47 +201,49 @@ private fun LoadedResults(
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
 ) {
+    ReadableWidth {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item(key = "options") { OptionsPanel(options, onAction) }
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item(key = "options") { OptionsPanel(options, onAction) }
 
-        if (phase.responses.isEmpty()) {
-            item(key = "empty") {
-                CenteredMessage(
-                    stringResource(
-                        if (phase.isComplete) {
-                            R.string.search_detail_no_results
-                        } else {
-                            R.string.search_detail_searching
-                        },
-                    ),
+            if (phase.responses.isEmpty()) {
+                item(key = "empty") {
+                    CenteredMessage(
+                        stringResource(
+                            if (phase.isComplete) {
+                                R.string.search_detail_no_results
+                            } else {
+                                R.string.search_detail_searching
+                            },
+                        ),
+                    )
+                }
+            }
+
+            // Each peer is a single card; its folders and files are cards nested within it (see
+            // PeerCard). Keeping the peer as the lazy-item boundary preserves list virtualization
+            // while giving the nested-card hierarchy.
+            items(phase.responses, key = { "peer-${it.username}" }) { response ->
+                PeerCard(
+                    response = response,
+                    onAction = onAction,
+                    onBrowseUser = onBrowseUser,
+                    onUserInfo = onUserInfo,
+                    onChatUser = onChatUser,
+                    modifier = Modifier.animateItem(),
                 )
             }
-        }
 
-        // Each peer is a single card; its folders and files are cards nested within it (see
-        // PeerCard). Keeping the peer as the lazy-item boundary preserves list virtualization
-        // while giving the nested-card hierarchy.
-        items(phase.responses, key = { "peer-${it.username}" }) { response ->
-            PeerCard(
-                response = response,
-                onAction = onAction,
-                onBrowseUser = onBrowseUser,
-                onUserInfo = onUserInfo,
-                onChatUser = onChatUser,
-                modifier = Modifier.animateItem(),
-            )
-        }
-
-        item(key = "pager") {
-            Pager(
-                remainingCount = phase.remainingCount,
-                filteredCount = phase.filteredCount,
-                onShowMore = { onAction(SearchDetailAction.ShowMore) },
-            )
+            item(key = "pager") {
+                Pager(
+                    remainingCount = phase.remainingCount,
+                    filteredCount = phase.filteredCount,
+                    onShowMore = { onAction(SearchDetailAction.ShowMore) },
+                )
+            }
         }
     }
 }

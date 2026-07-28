@@ -1,9 +1,16 @@
 package com.slskdandroid.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.Icon
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -61,6 +68,25 @@ fun SlskdApp(
         NavHost(
             navController = navController,
             startDestination = TopLevelDestination.SEARCH.route,
+            // Shared-axis (X) transitions: entering content slides in from the leading edge while
+            // outgoing content slides out, tied together by a fade. The library default is a plain
+            // fade, which reads as a cut on a 7-tab app and gives no sense of direction.
+            enterTransition = {
+                slideInHorizontally(SHARED_AXIS_SLIDE) { it / SHARED_AXIS_SLIDE_FRACTION } +
+                    fadeIn(SHARED_AXIS_FADE)
+            },
+            exitTransition = {
+                slideOutHorizontally(SHARED_AXIS_SLIDE) { -it / SHARED_AXIS_SLIDE_FRACTION } +
+                    fadeOut(SHARED_AXIS_FADE)
+            },
+            popEnterTransition = {
+                slideInHorizontally(SHARED_AXIS_SLIDE) { -it / SHARED_AXIS_SLIDE_FRACTION } +
+                    fadeIn(SHARED_AXIS_FADE)
+            },
+            popExitTransition = {
+                slideOutHorizontally(SHARED_AXIS_SLIDE) { it / SHARED_AXIS_SLIDE_FRACTION } +
+                    fadeOut(SHARED_AXIS_FADE)
+            },
         ) {
             // Cross-tab jumps (open a peer in the Browse / Users tab). Switch tabs the same way
             // the nav suite does — pop to the start destination saving the current tab's state —
@@ -124,3 +150,24 @@ private fun NavHostController.navigateToTopLevel(destination: TopLevelDestinatio
         restoreState = true
     }
 }
+
+/**
+ * Motion for destination changes. Duration and easing come from the M3 "emphasized" transition
+ * spec; the slide is a fraction of the width rather than the full width, which is what makes it
+ * read as shared-axis rather than a full push.
+ */
+private const val SHARED_AXIS_DURATION_MS = 300
+
+/** Slide component; typed to IntOffset because that is what the slide transitions animate. */
+private val SHARED_AXIS_SLIDE = tween<IntOffset>(
+    durationMillis = SHARED_AXIS_DURATION_MS,
+    easing = FastOutSlowInEasing,
+)
+
+/** Fade component; typed to Float. Same duration and easing, so the two stay locked together. */
+private val SHARED_AXIS_FADE = tween<Float>(
+    durationMillis = SHARED_AXIS_DURATION_MS,
+    easing = FastOutSlowInEasing,
+)
+
+private const val SHARED_AXIS_SLIDE_FRACTION = 5
