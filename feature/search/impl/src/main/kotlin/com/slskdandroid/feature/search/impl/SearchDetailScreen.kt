@@ -421,7 +421,12 @@ private fun PeerHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .clickable(
+                onClick = onToggle,
+                onClickLabel = stringResource(
+                    if (response.folded) R.string.search_expand else R.string.search_collapse,
+                ),
+            )
             .padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -602,7 +607,12 @@ private fun FileRow(
             )
             Spacer(Modifier.width(6.dp))
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        // Merged so a screen reader announces "name, 8.4 MB · 320 kbps · 3:07" as one item
+        // rather than reading the filename and the metadata as two separate stops.
+        Column(
+            modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {},
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
             Text(
                 file.displayName,
                 style = MaterialTheme.typography.bodyMedium,

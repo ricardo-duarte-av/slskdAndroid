@@ -266,7 +266,7 @@ private fun RoomRow(name: String, onOpen: () -> Unit, onLeave: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpen)
+            .clickable(onClick = onOpen, onClickLabel = stringResource(R.string.rooms_open))
             .padding(start = 16.dp, end = 4.dp, top = 14.dp, bottom = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -404,7 +404,12 @@ private fun MessageItem(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Tapping the sender (flag + name) opens their profile in the Users tab.
                 Row(
-                    modifier = Modifier.weight(1f, fill = false).clickable(onClick = onSenderClick),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .clickable(
+                            onClick = onSenderClick,
+                            onClickLabel = stringResource(R.string.rooms_open_profile),
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     countryFlag(countryCode)?.let {
@@ -475,7 +480,7 @@ private fun MemberRow(user: RoomUser, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick, onClickLabel = stringResource(R.string.rooms_open_profile))
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

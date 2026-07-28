@@ -609,7 +609,8 @@ private fun DownloadRow(
                 )
                 Spacer(Modifier.width(8.dp))
             }
-            Column(modifier = Modifier.weight(1f)) {
+            // Merged: filename and status line read as one item, not two stops.
+            Column(modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
                 Text(
                     download.displayName,
                     style = MaterialTheme.typography.bodyMedium,

@@ -39,4 +39,7 @@
         <item quantity="other">%1$d users</item>
     </plurals>
 
+    <string name="rooms_open">Open room</string>
+    <string name="rooms_open_profile">Open profile</string>
+
 </resources>

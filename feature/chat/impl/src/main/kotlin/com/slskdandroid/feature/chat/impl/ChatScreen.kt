@@ -212,7 +212,10 @@ private fun ConversationRow(conversation: Conversation, avatar: ByteArray?, onCl
                 Badge { Text(conversation.unreadCount.toString()) }
             }
         },
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.clickable(
+            onClick = onClick,
+            onClickLabel = stringResource(R.string.chat_open_conversation),
+        ),
     ) {
         Text(
             conversation.username,
