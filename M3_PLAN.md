@@ -275,41 +275,36 @@ Still open: repositories other than the connection tester surface raw `Throwable
 / OkHttp text) as `UiText.Raw`. Making those typed too is a larger refactor across every repository
 and is not covered here.
 
-### Stage 3 — Component conformance — **PARTLY DONE**
-
-Done (2026-07-28):
+### Stage 3 — Component conformance ✅ **DONE**
 
 - **B5 shape tokens.** `nestedCardShape` reads `MaterialTheme.shapes` (large/medium/small) instead
-  of literal 16/12/8dp. Those roles resolve to the same values, so it is behaviour-preserving —
-  but it is a token now, and retheming moves the cards with it.
-- **B6 `ListItem` adoption.** Settings rows, the search options toggles, and chat conversation rows
-  are M3 `ListItem`s rather than hand-rolled `Row`+`Column`+`Spacer`. The toggle rows also gained
-  `Modifier.toggleable(role = Role.Switch)`, so a screen reader announces one control instead of a
-  row and a separate switch. *Note: alpha23 deprecated the `headlineContent`-first overload in
-  favour of a trailing `content` lambda — the current form is used.*
-- **B7 progress consistency.** The search progress bar is now `LinearWavyProgressIndicator`,
-  matching the transfer bars it used to sit next to as a plain indicator.
-- **B8 app bar scroll behaviour.** `enterAlwaysScrollBehavior` on **17 of 19** `TopAppBar` call
-  sites, with the `nestedScroll` connection on each `Scaffold`. Screens with several bar variants
-  (downloads' selection bar, rooms' three, browse's five) share one behaviour so the collapse state
-  survives switching between them. The two omissions are deliberate: `ConnectionSetupScreen` is a
-  short form and `PlaceholderScreen` is static — neither scrolls, so a scroll behaviour would do
-  nothing.
+  of literal 16/12/8dp. Same values, but a token now.
+- **B6 `ListItem`.** Settings rows, search options toggles and chat conversation rows. Toggle rows
+  also gained `Modifier.toggleable(role = Role.Switch)` so a screen reader announces one control.
+  *alpha23 deprecated the `headlineContent`-first overload — the trailing-lambda form is used.*
+- **B7 progress consistency.** Search uses `LinearWavyProgressIndicator`, matching the transfer bars.
+- **B8 app bar scroll behaviour.** 17 of 19 `TopAppBar`s; the two omissions
+  (`ConnectionSetupScreen`, `PlaceholderScreen`) have no scrolling content.
+- **B9 transient feedback.** `SnackbarHost` on Downloads and Uploads, fed by a one-shot `Channel`
+  of events alongside the state flow. This also fixed a real defect: `runBulk` swallowed every
+  failure, so a bulk action that failed was indistinguishable from one that worked until the next
+  poll contradicted it. Failures are now counted and reported.
+  - **Undo is offered only where it is real.** Downloads can be restored by re-enqueuing
+    (username, filename, size) — exactly what Retry does. **Uploads deliberately have no Undo**:
+    they are peer-driven and slskd exposes no re-initiation endpoint, so the button would do
+    nothing.
+- **Expressive components.** The search and browse selection bars are now
+  `HorizontalFloatingToolbar` instead of a hand-rolled `Surface`+`Row`.
 
-Still to do:
+Two candidates were **rejected** after checking the real API rather than adopting them for their
+own sake:
 
-- **B9 transient feedback.** No `SnackbarHost` anywhere; errors are still static centred text, and
-  the destructive bulk actions (`BulkRemove`, `RemoveSelected`) commit with no undo. This changes
-  ViewModel surfaces (a one-shot event channel alongside the state flow), so it is a behaviour
-  change worth reviewing on its own.
-- **Expressive component swaps.** The selection bars are still hand-rolled `Surface`+`Row`
-  (→ `FloatingToolbar` / `FlexibleBottomAppBar`), the sort dropdown is a `TextButton`+`DropdownMenu`
-  (→ `ButtonGroup`), and per-peer overflow menus could use `AppBarRow`. All confirmed present in
-  alpha23. Each needs its `@OptIn` marker discovered at compile time, and each is design-visible
-  enough to want a screenshot review rather than a blind swap.
-- **Taller app bars.** Search and Browse are candidates for `MediumFlexibleTopAppBar` /
-  `LargeFlexibleTopAppBar` with `exitUntilCollapsed`, which is a visual decision rather than a
-  conformance fix.
+- **`ButtonGroup` for the sort selector** — the labels are "Upload Speed (Fastest to Slowest)" and
+  "Queue Depth (Least to Most)". A segmented row of two long labels overflows badly; the dropdown
+  is the right control until the labels are shortened.
+- **`AppBarRow` for overflow** — it exists to collapse a *row of app bar actions* into a menu. Our
+  app bars have at most two actions, and the per-peer overflow menus aren't in an app bar at all.
+  Adopting it would add indirection without solving a problem we have.
 
 ### Stage 4 — Adaptive layout (medium)
 

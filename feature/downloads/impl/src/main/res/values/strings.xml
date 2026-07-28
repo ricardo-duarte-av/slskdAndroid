@@ -51,4 +51,20 @@
     </plurals>
     <string name="downloads_peer_summary">%1$s · %2$s</string>
 
+    <!-- Snackbar feedback for bulk actions. -->
+    <plurals name="downloads_removed">
+        <item quantity="one">Removed %1$d transfer</item>
+        <item quantity="other">Removed %1$d transfers</item>
+    </plurals>
+    <plurals name="downloads_cancelled">
+        <item quantity="one">Cancelled %1$d transfer</item>
+        <item quantity="other">Cancelled %1$d transfers</item>
+    </plurals>
+    <plurals name="downloads_retried">
+        <item quantity="one">Retrying %1$d transfer</item>
+        <item quantity="other">Retrying %1$d transfers</item>
+    </plurals>
+    <string name="downloads_action_failed">%1$d of %2$d didn\'t go through</string>
+    <string name="downloads_undo">Undo</string>
+
 </resources>

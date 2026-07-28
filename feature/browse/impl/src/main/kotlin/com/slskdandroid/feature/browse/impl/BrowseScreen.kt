@@ -30,8 +30,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -431,24 +433,24 @@ private fun SelectionBar(
     onClear: () -> Unit,
     onDownload: () -> Unit,
 ) {
-    Surface(tonalElevation = 3.dp) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(
-                    R.string.browse_selection_summary,
-                    pluralStringResource(R.plurals.browse_selected_files, count, count),
-                    formatBytes(sizeBytes),
-                ),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onClear) { Text(stringResource(R.string.browse_clear)) }
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = onDownload) { Text(stringResource(R.string.browse_download_selected)) }
-        }
+    // M3 expressive contextual toolbar rather than a hand-rolled Surface+Row. It floats over the
+    // list instead of pinning a slab to the bottom, and animates in/out with `expanded`.
+    HorizontalFloatingToolbar(
+        expanded = true,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(
+            stringResource(
+                R.string.browse_selection_summary,
+                pluralStringResource(R.plurals.browse_selected_files, count, count),
+                formatBytes(sizeBytes),
+            ),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Spacer(Modifier.weight(1f))
+        TextButton(onClick = onClear) { Text(stringResource(R.string.browse_clear)) }
+        Spacer(Modifier.width(8.dp))
+        Button(onClick = onDownload) { Text(stringResource(R.string.browse_download_selected)) }
     }
 }
 

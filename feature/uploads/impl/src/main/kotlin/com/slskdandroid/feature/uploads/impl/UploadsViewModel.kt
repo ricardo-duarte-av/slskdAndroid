@@ -10,6 +10,8 @@ import com.slskdandroid.core.model.Upload
 import com.slskdandroid.core.model.UploadState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,6 +40,10 @@ class UploadsViewModel @Inject constructor(
     private val selectedIds = MutableStateFlow<Set<String>>(emptySet())
     private val collapsedUsers = MutableStateFlow<Set<String>>(emptySet())
     private val collapsedDirectories = MutableStateFlow<Set<String>>(emptySet())
+
+    // One-shot action results; a Channel so a snackbar fires once rather than being replayed.
+    private val _events = Channel<UploadsEvent>(Channel.BUFFERED)
+    val events: Flow<UploadsEvent> = _events.receiveAsFlow()
 
     private val loadResult: Flow<LoadResult> = uploadsRepository.uploads()
         .onEach { uploads.value = it }
@@ -95,33 +102,49 @@ class UploadsViewModel @Inject constructor(
 
             UploadsAction.RemoveSelected -> {
                 val ids = selectedIds.value
-                runBulk(uploads.value.filter { it.id in ids }) {
+                val targets = uploads.value.filter { it.id in ids }
+                selectedIds.value = emptySet()
+                runBulk(targets, { UploadsEvent.Removed(it) }) {
                     cancel(it.username, it.id, remove = true)
                 }
-                selectedIds.value = emptySet()
             }
 
             is UploadsAction.BulkCancel ->
-                runBulk(uploads.value.filter { it.matchesCancel(action.filter) }) {
-                    cancel(it.username, it.id, remove = false)
+                uploads.value.filter { it.matchesCancel(action.filter) }.let { targets ->
+                    runBulk(targets, { UploadsEvent.Cancelled(it) }) {
+                        cancel(it.username, it.id, remove = false)
+                    }
                 }
 
             is UploadsAction.BulkRemove ->
-                runBulk(uploads.value.filter { it.matchesRemove(action.filter) }) {
-                    cancel(it.username, it.id, remove = true)
+                uploads.value.filter { it.matchesRemove(action.filter) }.let { targets ->
+                    runBulk(targets, { UploadsEvent.Removed(it) }) {
+                        cancel(it.username, it.id, remove = true)
+                    }
                 }
         }
     }
 
-    /** Fires [op] for each target in parallel; failures are swallowed (the next poll reconciles). */
-    private fun runBulk(targets: List<Upload>, op: suspend UploadsRepository.(Upload) -> Unit) {
+    /** Fires [op] for each target in parallel, then reports the outcome once (see downloads). */
+    private fun runBulk(
+        targets: List<Upload>,
+        onSuccess: (Int) -> UploadsEvent,
+        op: suspend UploadsRepository.(Upload) -> Unit,
+    ) {
         if (targets.isEmpty()) return
         viewModelScope.launch {
-            coroutineScope {
-                targets.forEach { upload ->
-                    launch { runCatching { uploadsRepository.op(upload) } }
-                }
+            val failures = coroutineScope {
+                targets
+                    .map { upload -> async { runCatching { uploadsRepository.op(upload) }.isFailure } }
+                    .count { it.await() }
             }
+            _events.send(
+                if (failures > 0) {
+                    UploadsEvent.Failed(failed = failures, attempted = targets.size)
+                } else {
+                    onSuccess(targets.size)
+                },
+            )
         }
     }
 }

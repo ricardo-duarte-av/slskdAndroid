@@ -10,6 +10,8 @@ import com.slskdandroid.core.model.Download
 import com.slskdandroid.core.model.DownloadState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -37,6 +40,11 @@ class DownloadsViewModel @Inject constructor(
     private val selectedIds = MutableStateFlow<Set<String>>(emptySet())
     private val collapsedUsers = MutableStateFlow<Set<String>>(emptySet())
     private val collapsedDirectories = MutableStateFlow<Set<String>>(emptySet())
+
+    // One-shot action results. A Channel rather than a StateFlow so a snackbar fires once and
+    // isn't replayed on the next recomposition or configuration change.
+    private val _events = Channel<DownloadsEvent>(Channel.BUFFERED)
+    val events: Flow<DownloadsEvent> = _events.receiveAsFlow()
 
     private val loadResult: Flow<LoadResult> = downloadsRepository.downloads()
         .onEach { downloads.value = it }
@@ -94,27 +102,47 @@ class DownloadsViewModel @Inject constructor(
             DownloadsAction.ClearSelection -> selectedIds.value = emptySet()
 
             DownloadsAction.CancelSelected -> {
-                runBulk(selectedDownloads()) { cancel(it.username, it.id, remove = false) }
+                val targets = selectedDownloads()
                 selectedIds.value = emptySet()
+                runBulk(targets, { DownloadsEvent.Cancelled(it) }) {
+                    cancel(it.username, it.id, remove = false)
+                }
             }
 
             DownloadsAction.RemoveSelected -> {
-                runBulk(selectedDownloads()) { cancel(it.username, it.id, remove = true) }
+                val targets = selectedDownloads()
                 selectedIds.value = emptySet()
+                runBulk(targets, { DownloadsEvent.Removed(it, targets) }) {
+                    cancel(it.username, it.id, remove = true)
+                }
             }
 
             is DownloadsAction.BulkRetry ->
-                runBulk(downloads.value.filter { it.matchesRetry(action.filter) }) { retry(it) }
+                downloads.value.filter { it.matchesRetry(action.filter) }.let { targets ->
+                    runBulk(targets, { DownloadsEvent.Retried(it) }) { retry(it) }
+                }
 
             is DownloadsAction.BulkCancel ->
-                runBulk(downloads.value.filter { it.matchesCancel(action.filter) }) {
-                    cancel(it.username, it.id, remove = false)
+                downloads.value.filter { it.matchesCancel(action.filter) }.let { targets ->
+                    runBulk(targets, { DownloadsEvent.Cancelled(it) }) {
+                        cancel(it.username, it.id, remove = false)
+                    }
                 }
 
             is DownloadsAction.BulkRemove ->
-                runBulk(downloads.value.filter { it.matchesRemove(action.filter) }) {
-                    cancel(it.username, it.id, remove = true)
+                downloads.value.filter { it.matchesRemove(action.filter) }.let { targets ->
+                    runBulk(targets, { DownloadsEvent.Removed(it, targets) }) {
+                        cancel(it.username, it.id, remove = true)
+                    }
                 }
+
+            is DownloadsAction.UndoRemove -> viewModelScope.launch {
+                action.downloads.forEach { download ->
+                    runCatching {
+                        downloadsRepository.enqueue(download.username, download.filename, download.sizeBytes)
+                    }
+                }
+            }
         }
     }
 
@@ -124,14 +152,32 @@ class DownloadsViewModel @Inject constructor(
     }
 
     /** Fires [op] for each target in parallel; failures are swallowed (the next poll reconciles). */
-    private fun runBulk(targets: List<Download>, op: suspend DownloadsRepository.(Download) -> Unit) {
+    /**
+     * Fires [op] for each target in parallel, then reports the outcome once.
+     *
+     * Failures used to be swallowed entirely, so a bulk action that failed looked identical to one
+     * that worked until the next poll contradicted it. Now any failure is surfaced; a clean run
+     * reports success via [onSuccess].
+     */
+    private fun runBulk(
+        targets: List<Download>,
+        onSuccess: (Int) -> DownloadsEvent,
+        op: suspend DownloadsRepository.(Download) -> Unit,
+    ) {
         if (targets.isEmpty()) return
         viewModelScope.launch {
-            coroutineScope {
-                targets.forEach { download ->
-                    launch { runCatching { downloadsRepository.op(download) } }
-                }
+            val failures = coroutineScope {
+                targets
+                    .map { download -> async { runCatching { downloadsRepository.op(download) }.isFailure } }
+                    .count { it.await() }
             }
+            _events.send(
+                if (failures > 0) {
+                    DownloadsEvent.Failed(failed = failures, attempted = targets.size)
+                } else {
+                    onSuccess(targets.size)
+                },
+            )
         }
     }
 }

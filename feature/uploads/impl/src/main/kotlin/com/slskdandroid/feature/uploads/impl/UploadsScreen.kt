@@ -36,18 +36,22 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -70,6 +74,7 @@ import com.slskdandroid.core.designsystem.component.nestedCardColor
 import com.slskdandroid.core.designsystem.component.transferStatusOf
 import com.slskdandroid.core.model.Upload
 import com.slskdandroid.core.model.UploadState
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 internal fun UploadsRoute(
@@ -80,6 +85,9 @@ internal fun UploadsRoute(
     viewModel: UploadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    BulkActionFeedback(viewModel.events, snackbarHostState)
+
     UploadsScreen(
         uiState = uiState,
         onAction = viewModel::onAction,
@@ -87,7 +95,29 @@ internal fun UploadsRoute(
         onUserInfo = onUserInfo,
         onChatUser = onChatUser,
         onSettings = onSettings,
+        snackbarHostState = snackbarHostState,
     )
+}
+
+/** Turns one-shot [UploadsEvent]s into snackbars. No Undo — see [UploadsEvent]. */
+@Composable
+private fun BulkActionFeedback(events: Flow<UploadsEvent>, snackbarHostState: SnackbarHostState) {
+    val resources = LocalContext.current.resources
+    LaunchedEffect(events) {
+        events.collect { event ->
+            val message = when (event) {
+                is UploadsEvent.Removed ->
+                    resources.getQuantityString(R.plurals.uploads_removed, event.count, event.count)
+
+                is UploadsEvent.Cancelled ->
+                    resources.getQuantityString(R.plurals.uploads_cancelled, event.count, event.count)
+
+                is UploadsEvent.Failed ->
+                    resources.getString(R.string.uploads_action_failed, event.failed, event.attempted)
+            }
+            snackbarHostState.showSnackbar(message = message, withDismissAction = true)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,6 +129,7 @@ internal fun UploadsScreen(
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
     onSettings: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     // While selecting, system back clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(UploadsAction.ClearSelection) }
@@ -112,6 +143,7 @@ internal fun UploadsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.uploads_title)) },
