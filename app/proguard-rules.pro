@@ -53,3 +53,13 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+
+# ---------------------------------------------------------------------------
+# WorkManager: the default WorkerFactory instantiates workers reflectively by
+# class name, so the class and its (Context, WorkerParameters) constructor must
+# survive shrinking. (androidx.work ships a consumer rule for this; this is
+# defensive and explicit about the one worker we have.)
+# ---------------------------------------------------------------------------
+-keep class com.slskdandroid.notifications.MessageCheckWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}

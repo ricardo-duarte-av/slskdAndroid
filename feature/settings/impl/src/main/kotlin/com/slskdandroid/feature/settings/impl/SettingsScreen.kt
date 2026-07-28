@@ -173,7 +173,7 @@ private fun IntervalSetting(seconds: Int, onSecondsChange: (Int) -> Unit) {
             onValueChange = { draft = it },
             onValueChangeFinished = { onSecondsChange(draft.toInt()) },
             valueRange = SLIDER_MIN..SLIDER_MAX,
-            // 30s increments across the range.
+            // 5-minute increments across the range.
             steps = ((SLIDER_MAX - SLIDER_MIN) / STEP_SECONDS).toInt() - 1,
         )
         Text(
@@ -192,7 +192,8 @@ private fun formatInterval(seconds: Int): String = when {
     else -> stringResource(R.string.settings_interval_minutes_seconds, seconds / 60, seconds % 60)
 }
 
+// The full permitted range: the floor is WorkManager's 15-minute periodic minimum, so there is
+// little room left to trim for the sake of the control.
 private val SLIDER_MIN = NotificationSettings.MIN_INTERVAL_SECONDS.toFloat()
-private const val STEP_SECONDS = 30f
-// Cap the slider at 30 minutes for a usable control; the model permits more.
-private const val SLIDER_MAX = 1_800f
+private val SLIDER_MAX = NotificationSettings.MAX_INTERVAL_SECONDS.toFloat()
+private const val STEP_SECONDS = 300f
