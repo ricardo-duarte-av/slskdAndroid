@@ -293,11 +293,20 @@ and is not covered here.
     (username, filename, size) — exactly what Retry does. **Uploads deliberately have no Undo**:
     they are peer-driven and slskd exposes no re-initiation endpoint, so the button would do
     nothing.
-- **Expressive components.** The search and browse selection bars are now
-  `HorizontalFloatingToolbar` instead of a hand-rolled `Surface`+`Row`.
+- **Expressive components — none adopted.** See below; all three candidates were rejected on
+  inspection or reverted after testing.
 
-Two candidates were **rejected** after checking the real API rather than adopting them for their
-own sake:
+Three candidates were considered. **None survived**, which is a result rather than a gap — the
+components exist, but none of them fits the content we actually have:
+
+- **`HorizontalFloatingToolbar` for the selection bars** — *tried, then reverted.* It is designed
+  as a compact, content-wrapping pill of icon actions and enforces a fixed
+  `FloatingToolbarDefaults.containerSize`. Our selection bar carries a text summary
+  ("3 files · 41.2 MB") plus two labelled buttons, and forcing `fillMaxWidth()` on it — with a
+  `Spacer(weight(1f))` that needs bounded constraints the toolbar doesn't provide — produced a
+  container occupying roughly half the screen on device. Using it properly would mean dropping the
+  summary text and reducing the actions to icons: a redesign of the selection UX, not a component
+  swap. The `Surface`+`Row` bottom bar is retained.
 
 - **`ButtonGroup` for the sort selector** — the labels are "Upload Speed (Fastest to Slowest)" and
   "Queue Depth (Least to Most)". A segmented row of two long labels overflows badly; the dropdown

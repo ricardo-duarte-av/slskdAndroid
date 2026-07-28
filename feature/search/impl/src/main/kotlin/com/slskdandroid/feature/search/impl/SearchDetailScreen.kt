@@ -38,7 +38,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
@@ -67,7 +66,6 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -135,53 +133,35 @@ internal fun SearchDetailScreen(
                 },
             )
         },
-    ) { padding ->
-        // The toolbar floats *over* the list rather than sitting in the Scaffold's bottomBar slot:
-        // in bottomBar it would reserve layout space and permanently shorten the list, which is
-        // exactly what a floating toolbar exists to avoid. The list gets extra bottom padding
-        // while a selection is active so the last card can still be scrolled clear of it.
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                when (val phase = uiState.phase) {
-                    Phase.Loading -> CenteredMessage(stringResource(R.string.search_detail_loading))
-
-                    is Phase.Error ->
-                        CenteredMessage(phase.message.asString(), MaterialTheme.colorScheme.error)
-
-                    is Phase.Loaded -> {
-                        if (!phase.isComplete) {
-                            // Wavy, to match the transfer progress bars in Downloads/Uploads — the
-                            // app previously mixed wavy and plain indicators on adjacent screens.
-                            LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        }
-                        LoadedResults(
-                            phase = phase,
-                            options = uiState.options,
-                            onAction = onAction,
-                            onBrowseUser = onBrowseUser,
-                            onUserInfo = onUserInfo,
-                            onChatUser = onChatUser,
-                            extraBottomPadding = if (uiState.selectedCount > 0) TOOLBAR_CLEARANCE else 0.dp,
-                        )
-                    }
-                }
-            }
-
+        bottomBar = {
             if (uiState.selectedCount > 0) {
                 SelectionBar(
                     count = uiState.selectedCount,
                     sizeBytes = uiState.selectedSizeBytes,
                     onClear = { onAction(SearchDetailAction.ClearSelection) },
                     onDownload = { onAction(SearchDetailAction.DownloadSelected) },
-                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
+            }
+        },
+    ) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (val phase = uiState.phase) {
+                Phase.Loading -> CenteredMessage(stringResource(R.string.search_detail_loading))
+
+                is Phase.Error -> CenteredMessage(phase.message.asString(), MaterialTheme.colorScheme.error)
+
+                is Phase.Loaded -> {
+                    if (!phase.isComplete) {
+                        // Wavy, to match the transfer progress bars in Downloads/Uploads — the
+                        // app previously mixed wavy and plain indicators on adjacent screens.
+                        LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                    LoadedResults(phase, uiState.options, onAction, onBrowseUser, onUserInfo, onChatUser)
+                }
             }
         }
     }
 }
-
-/** Vertical room left below the list so the floating toolbar never covers the last card. */
-private val TOOLBAR_CLEARANCE = 88.dp
 
 @Composable
 private fun SelectionBar(
@@ -189,26 +169,25 @@ private fun SelectionBar(
     sizeBytes: Long,
     onClear: () -> Unit,
     onDownload: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    // M3 expressive contextual toolbar rather than a hand-rolled Surface+Row. It floats over the
-    // list instead of pinning a slab to the bottom, and animates in/out with `expanded`.
-    HorizontalFloatingToolbar(
-        expanded = true,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        Text(
-            stringResource(
-                R.string.search_selection_summary,
-                pluralStringResource(R.plurals.search_selected_files, count, count),
-                formatBytes(sizeBytes),
-            ),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Spacer(Modifier.weight(1f))
-        TextButton(onClick = onClear) { Text(stringResource(R.string.search_clear)) }
-        Spacer(Modifier.width(8.dp))
-        Button(onClick = onDownload) { Text(stringResource(R.string.search_download_selected)) }
+    Surface(tonalElevation = 3.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(
+                    R.string.search_selection_summary,
+                    pluralStringResource(R.plurals.search_selected_files, count, count),
+                    formatBytes(sizeBytes),
+                ),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onClear) { Text(stringResource(R.string.search_clear)) }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = onDownload) { Text(stringResource(R.string.search_download_selected)) }
+        }
     }
 }
 
@@ -220,11 +199,10 @@ private fun LoadedResults(
     onBrowseUser: (String) -> Unit,
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
-    extraBottomPadding: Dp = 0.dp,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp + extraBottomPadding),
+        contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item(key = "options") { OptionsPanel(options, onAction) }

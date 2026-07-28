@@ -30,10 +30,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -57,7 +55,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -98,15 +95,22 @@ internal fun BrowseScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = { BrowseTopBar(phase, onAction, onSettings, scrollBehavior) },
+        bottomBar = {
+            if (phase is BrowsePhase.Files && uiState.selectedCount > 0) {
+                SelectionBar(
+                    count = uiState.selectedCount,
+                    sizeBytes = uiState.selectedSizeBytes,
+                    onClear = { onAction(BrowseAction.ClearSelection) },
+                    onDownload = { onAction(BrowseAction.DownloadSelected) },
+                )
+            }
+        },
     ) { padding ->
-        // Floats over the file list rather than occupying the Scaffold's bottomBar slot — see the
-        // equivalent comment in SearchDetailScreen. FileList adds matching bottom clearance.
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                when (phase) {
-                    BrowsePhase.Idle -> IdlePrompt(uiState.query, onAction)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (phase) {
+                BrowsePhase.Idle -> IdlePrompt(uiState.query, onAction)
 
-                    is BrowsePhase.Loading -> CenteredContent {
+                is BrowsePhase.Loading -> CenteredContent {
                     val percent = phase.percent
                     if (percent == null) {
                         CircularProgressIndicator()
@@ -123,10 +127,10 @@ internal fun BrowseScreen(
                     }
                 }
 
-                    is BrowsePhase.Error ->
-                        CenteredMessage(phase.message.asString(), MaterialTheme.colorScheme.error)
+                is BrowsePhase.Error ->
+                    CenteredMessage(phase.message.asString(), MaterialTheme.colorScheme.error)
 
-                    is BrowsePhase.Tree -> Column(Modifier.fillMaxSize()) {
+                is BrowsePhase.Tree -> Column(Modifier.fillMaxSize()) {
                     FilterField(phase.filter, stringResource(R.string.browse_filter_folders)) {
                         onAction(BrowseAction.SetTreeFilter(it))
                     }
@@ -143,35 +147,16 @@ internal fun BrowseScreen(
                     }
                 }
 
-                    is BrowsePhase.Files -> Column(Modifier.fillMaxSize()) {
-                        FilterField(phase.filter, stringResource(R.string.browse_filter_files)) {
-                            onAction(BrowseAction.SetFileFilter(it))
-                        }
-                        FileList(
-                            phase = phase,
-                            onAction = onAction,
-                            extraBottomPadding =
-                                if (uiState.selectedCount > 0) TOOLBAR_CLEARANCE else 0.dp,
-                        )
+                is BrowsePhase.Files -> Column(Modifier.fillMaxSize()) {
+                    FilterField(phase.filter, stringResource(R.string.browse_filter_files)) {
+                        onAction(BrowseAction.SetFileFilter(it))
                     }
+                    FileList(phase, onAction)
                 }
-            }
-
-            if (phase is BrowsePhase.Files && uiState.selectedCount > 0) {
-                SelectionBar(
-                    count = uiState.selectedCount,
-                    sizeBytes = uiState.selectedSizeBytes,
-                    onClear = { onAction(BrowseAction.ClearSelection) },
-                    onDownload = { onAction(BrowseAction.DownloadSelected) },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
             }
         }
     }
 }
-
-/** Vertical room left below the list so the floating toolbar never covers the last row. */
-private val TOOLBAR_CLEARANCE = 88.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -340,14 +325,10 @@ private fun TreeNodeRow(
 }
 
 @Composable
-private fun FileList(
-    phase: BrowsePhase.Files,
-    onAction: (BrowseAction) -> Unit,
-    extraBottomPadding: Dp = 0.dp,
-) {
+private fun FileList(phase: BrowsePhase.Files, onAction: (BrowseAction) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp + extraBottomPadding),
+        contentPadding = PaddingValues(bottom = 16.dp),
     ) {
         item(key = "path-header") {
             Row(
@@ -449,26 +430,25 @@ private fun SelectionBar(
     sizeBytes: Long,
     onClear: () -> Unit,
     onDownload: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    // M3 expressive contextual toolbar rather than a hand-rolled Surface+Row. It floats over the
-    // list instead of pinning a slab to the bottom, and animates in/out with `expanded`.
-    HorizontalFloatingToolbar(
-        expanded = true,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        Text(
-            stringResource(
-                R.string.browse_selection_summary,
-                pluralStringResource(R.plurals.browse_selected_files, count, count),
-                formatBytes(sizeBytes),
-            ),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Spacer(Modifier.weight(1f))
-        TextButton(onClick = onClear) { Text(stringResource(R.string.browse_clear)) }
-        Spacer(Modifier.width(8.dp))
-        Button(onClick = onDownload) { Text(stringResource(R.string.browse_download_selected)) }
+    Surface(tonalElevation = 3.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(
+                    R.string.browse_selection_summary,
+                    pluralStringResource(R.plurals.browse_selected_files, count, count),
+                    formatBytes(sizeBytes),
+                ),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onClear) { Text(stringResource(R.string.browse_clear)) }
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = onDownload) { Text(stringResource(R.string.browse_download_selected)) }
+        }
     }
 }
 
