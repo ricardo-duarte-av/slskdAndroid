@@ -13,7 +13,7 @@ The UI target is **Material 3 Expressive** (the dynamic, motion-rich evolution o
 Versions are centralized in `gradle/libs.versions.toml`.
 
 - **Gradle 9.5.1**, **AGP 9.2.1**, **Kotlin 2.4.0**, **KSP 2.3.9** (KSP2, decoupled from the Kotlin version), **Hilt 2.59.2**.
-- **compileSdk / targetSdk 37, minSdk 26.** SDK is at `/home/daedric/android-sdk`; build-tools `37.0.0` and platform `android-37` are required and installed.
+- **compileSdk / targetSdk 37, minSdk 26.** Requires build-tools `37.0.0` and an `android-37*` platform. See "Locating the SDK" below — the path is per-workstation, don't assume one.
 - **Compose:** BOM `2026.05.01` for the common artifacts, with `androidx.compose.material3` **pinned to `1.5.0-alpha21`** (overrides the BOM) for the Expressive APIs.
 - **JDK 17** for compilation (system Java is 21; toolchain targets 17).
 
@@ -89,7 +89,30 @@ Use the Gradle wrapper (`./gradlew`). All of these are verified working:
 - **Unit tests:** `./gradlew testDebugUnitTest` (single test: `./gradlew :feature:search:impl:testDebugUnitTest --tests "com.slskdandroid.feature.search.impl.SearchListViewModelTest"`)
 - **Lint:** `./gradlew lintDebug` (per module: `./gradlew :app:lintDebug`)
 
-`local.properties` (gitignored) must point at the SDK: `sdk.dir=/home/daedric/android-sdk`.
+### Locating the SDK
+
+`local.properties` is **gitignored**, so a fresh clone (or a new workstation) won't have one and the
+build fails with *"SDK location not found"*. It must contain `sdk.dir=<path>` — but **the path
+varies per machine, so never hardcode or assume one.** Discover it, in this order:
+
+1. `$ANDROID_HOME`, then `$ANDROID_SDK_ROOT`.
+2. An existing `local.properties` (it may already be correct).
+3. Search the home directory — the usual locations are `~/Android/Sdk` (Android Studio's default on
+   Linux), `~/Library/Android/sdk` (macOS), `~/android-sdk`, `/opt/android-sdk`,
+   `/usr/lib/android-sdk`. More than one may exist and be incomplete; pick the one that actually
+   has both `platforms/android-37*` and `build-tools/37.0.0`.
+
+```bash
+# Prints the first candidate that has the platform and build-tools this project needs.
+for d in "$ANDROID_HOME" "$ANDROID_SDK_ROOT" ~/Android/Sdk ~/Library/Android/sdk ~/android-sdk \
+         /opt/android-sdk /usr/lib/android-sdk; do
+  [ -n "$d" ] && [ -d "$d/build-tools/37.0.0" ] && ls -d "$d"/platforms/android-37* >/dev/null 2>&1 \
+    && { echo "sdk.dir=$d"; break; }
+done
+```
+
+Write the result to `local.properties`. CI doesn't use this file — the workflow installs the SDK
+itself and `ANDROID_HOME` is already set there.
 
 ## Release, signing & CI
 
