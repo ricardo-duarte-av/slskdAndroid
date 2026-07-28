@@ -124,10 +124,13 @@ Full details live in `RELEASE.md`; the essentials:
 
   | Trigger | What runs |
   | --- | --- |
-  | any push / PR | `build` → `testDebugUnitTest`, then debug+release APK + AAB + `mapping.txt` as artifacts |
+  | any push / PR | `build` → `testDebugUnitTest` → `lintDebug`, then debug+release APK + AAB + `mapping.txt` as artifacts |
   | `v*` tag | build **+** Play upload (internal/draft) **+** GitHub Release with APKs |
 
-  - `build` job (every push/PR): builds debug + release **APK and AAB** plus the R8 `mapping.txt`, uploaded as artifacts.
+  - `build` job (every push/PR): runs unit tests, then **`lintDebug` (gating)**, then builds debug + release
+    **APK and AAB** plus the R8 `mapping.txt`, uploaded as artifacts. Test and lint reports are uploaded too.
+    Lint was added to CI in 0.2.0 — before that it was documented but never run, and two `MissingPermission`
+    errors sat failing on `main` undetected.
   - `publish` job (`v*` tags only): uploads the signed AAB to the Play **internal** track as a **draft** via the Play Developer API (`r0adkll/upload-google-play`). **Do not use Gradle Play Publisher** — GPP 3.12.1 targets AGP's removed `BaseAppModuleExtension` and is incompatible with AGP 9.
   - `release` job (`v*` tags only): creates a **GitHub Release** with the debug + release APKs attached as downloads.
 - **Runner gotcha:** GitHub runners' bundled `sdkmanager` can't see API 37. CI downloads the exact `commandlinetools-linux-14742923` build and installs `platforms;android-37.0` (note the `.0`) + `build-tools;37.0.0`.

@@ -64,6 +64,20 @@ jobs:
           path: '**/build/reports/tests/'
           if-no-files-found: ignore
 
+      # Lint was previously never run in CI, only documented as a local command. Two
+      # MissingPermission errors sat failing on main undetected as a result. It gates the
+      # build: lint is clean as of 0.2.0, so anything it reports here is new.
+      - name: Lint
+        run: ./gradlew lintDebug --stacktrace
+
+      - name: Upload lint reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: '**/build/reports/lint-results-*.html'
+          if-no-files-found: ignore
+
       - name: Decode release keystore (if secret present)
         id: keystore
         env:
