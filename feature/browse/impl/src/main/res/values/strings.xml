@@ -32,4 +32,6 @@
     </plurals>
     <string name="browse_selection_summary">%1$s · %2$s</string>
 
+    <string name="browse_nothing_shared">%1$s isn\'t sharing any files.</string>
+
 </resources>
