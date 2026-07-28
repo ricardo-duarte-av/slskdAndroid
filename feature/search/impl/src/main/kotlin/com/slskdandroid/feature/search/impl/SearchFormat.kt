@@ -2,10 +2,15 @@ package com.slskdandroid.feature.search.impl
 
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
+import java.time.format.FormatStyle
 
+/**
+ * Localized date+time for the search list. Previously `ofPattern("MMM d, HH:mm")`, which forced a
+ * US field order and a 24-hour clock on every locale; `ofLocalizedDateTime` follows the user's
+ * locale and their 12/24-hour preference.
+ */
 private val DISPLAY_FORMAT: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM d, HH:mm", Locale.getDefault())
+    DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
 
 /** Formats an slskd ISO-8601 timestamp to a short local string; returns "" if absent/unparseable. */
 internal fun formatTimestamp(iso: String?): String {
@@ -16,17 +21,4 @@ internal fun formatTimestamp(iso: String?): String {
             java.time.LocalDateTime.parse(iso).format(DISPLAY_FORMAT)
         }
         .getOrElse { "" }
-}
-
-/** Human-readable byte size, e.g. "4.2 MB". */
-internal fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = listOf("KB", "MB", "GB", "TB")
-    var value = bytes / 1024.0
-    var unitIndex = 0
-    while (value >= 1024 && unitIndex < units.lastIndex) {
-        value /= 1024.0
-        unitIndex++
-    }
-    return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
 }

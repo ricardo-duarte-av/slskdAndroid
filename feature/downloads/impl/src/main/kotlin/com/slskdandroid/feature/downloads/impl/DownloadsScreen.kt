@@ -36,16 +36,24 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.res.pluralStringResource
@@ -58,6 +66,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.model.Download
 import com.slskdandroid.core.designsystem.component.DepthCard
+import com.slskdandroid.core.designsystem.component.formatBytes
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.designsystem.component.TransferItem
@@ -66,7 +75,7 @@ import com.slskdandroid.core.designsystem.component.TransferStatusLine
 import com.slskdandroid.core.designsystem.component.nestedCardColor
 import com.slskdandroid.core.designsystem.component.transferStatusOf
 import com.slskdandroid.core.model.DownloadState
-import java.util.Locale
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 internal fun DownloadsRoute(
@@ -77,6 +86,12 @@ internal fun DownloadsRoute(
     viewModel: DownloadsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Bulk actions report their outcome once, as a snackbar. Removals offer Undo, which re-queues
+    // the cleared transfers — the same call Retry makes, so it genuinely restores them.
+    BulkActionFeedback(viewModel.events, snackbarHostState, viewModel::onAction)
+
     DownloadsScreen(
         uiState = uiState,
         onAction = viewModel::onAction,
@@ -84,7 +99,49 @@ internal fun DownloadsRoute(
         onUserInfo = onUserInfo,
         onChatUser = onChatUser,
         onSettings = onSettings,
+        snackbarHostState = snackbarHostState,
     )
+}
+
+/**
+ * Turns one-shot [DownloadsEvent]s into snackbars. Kept out of [DownloadsScreen] so that stays a
+ * pure, previewable function of its state.
+ */
+@Composable
+private fun BulkActionFeedback(
+    events: Flow<DownloadsEvent>,
+    snackbarHostState: SnackbarHostState,
+    onAction: (DownloadsAction) -> Unit,
+) {
+    val resources = LocalContext.current.resources
+    val undoLabel = stringResource(R.string.downloads_undo)
+    LaunchedEffect(events) {
+        events.collect { event ->
+            val message = when (event) {
+                is DownloadsEvent.Removed ->
+                    resources.getQuantityString(R.plurals.downloads_removed, event.count, event.count)
+
+                is DownloadsEvent.Cancelled ->
+                    resources.getQuantityString(R.plurals.downloads_cancelled, event.count, event.count)
+
+                is DownloadsEvent.Retried ->
+                    resources.getQuantityString(R.plurals.downloads_retried, event.count, event.count)
+
+                is DownloadsEvent.Failed ->
+                    resources.getString(R.string.downloads_action_failed, event.failed, event.attempted)
+            }
+            // Undo only for removals, and only when there is something to re-queue.
+            val undoable = event as? DownloadsEvent.Removed
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = undoLabel.takeIf { undoable?.restorable?.isNotEmpty() == true },
+                withDismissAction = true,
+            )
+            if (result == SnackbarResult.ActionPerformed && undoable != null) {
+                onAction(DownloadsAction.UndoRemove(undoable.restorable))
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,11 +153,18 @@ internal fun DownloadsScreen(
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
     onSettings: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     // While selecting, a system back press clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(DownloadsAction.ClearSelection) }
 
+    // One behaviour shared by both bars, so switching in and out of selection mode doesn't
+    // reset the collapse state.
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             if (uiState.inSelectionMode) {
                 SelectionTopBar(
@@ -108,11 +172,13 @@ internal fun DownloadsScreen(
                     onClear = { onAction(DownloadsAction.ClearSelection) },
                     onCancel = { onAction(DownloadsAction.CancelSelected) },
                     onRemove = { onAction(DownloadsAction.RemoveSelected) },
+                    scrollBehavior = scrollBehavior,
                 )
             } else {
                 TopAppBar(
                     title = { Text(stringResource(R.string.downloads_title)) },
                     actions = { SettingsActionButton(onSettings) },
+                    scrollBehavior = scrollBehavior,
                 )
             }
         },
@@ -146,8 +212,10 @@ private fun SelectionTopBar(
     onClear: () -> Unit,
     onCancel: () -> Unit,
     onRemove: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior,
 ) {
     TopAppBar(
+        scrollBehavior = scrollBehavior,
         navigationIcon = {
             IconButton(onClick = onClear) {
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.downloads_clear_selection))
@@ -620,17 +688,6 @@ private fun Download.statusLine(): String = when (state) {
     DownloadState.Unknown -> formatBytes(sizeBytes)
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = listOf("KB", "MB", "GB", "TB")
-    var value = bytes / 1024.0
-    var unitIndex = 0
-    while (value >= 1024 && unitIndex < units.lastIndex) {
-        value /= 1024.0
-        unitIndex++
-    }
-    return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
-}
 
 /** Announced by TalkBack for the long-press that enters multi-select. */
 

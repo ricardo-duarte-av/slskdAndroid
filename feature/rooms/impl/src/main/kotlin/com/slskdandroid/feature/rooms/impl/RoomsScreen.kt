@@ -48,6 +48,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +59,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
@@ -78,6 +81,7 @@ import com.slskdandroid.core.model.RoomUser
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 internal fun RoomsRoute(
@@ -104,15 +108,23 @@ internal fun RoomsScreen(
     BackHandler(enabled = search != null) { onAction(RoomsAction.CloseSearch) }
     BackHandler(enabled = search == null && open != null) { onAction(RoomsAction.CloseRoom) }
 
+    // Shared across all three bar variants (list / open room / room search) so the collapse
+    // state survives switching between them.
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             when {
                 search != null ->
-                    SimpleTopBar(stringResource(R.string.rooms_find)) { onAction(RoomsAction.CloseSearch) }
-                open != null -> RoomTopBar(open, onAction)
+                    SimpleTopBar(stringResource(R.string.rooms_find), scrollBehavior) {
+                        onAction(RoomsAction.CloseSearch)
+                    }
+                open != null -> RoomTopBar(open, onAction, scrollBehavior)
                 else -> TopAppBar(
                     title = { Text(stringResource(R.string.rooms_title)) },
                     actions = { SettingsActionButton(onSettings) },
+                    scrollBehavior = scrollBehavior,
                 )
             }
         },
@@ -158,8 +170,13 @@ internal fun RoomsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SimpleTopBar(title: String, onBack: () -> Unit) {
+private fun SimpleTopBar(
+    title: String,
+    scrollBehavior: TopAppBarScrollBehavior,
+    onBack: () -> Unit,
+) {
     TopAppBar(
+        scrollBehavior = scrollBehavior,
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -171,8 +188,13 @@ private fun SimpleTopBar(title: String, onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RoomTopBar(open: OpenRoom, onAction: (RoomsAction) -> Unit) {
+private fun RoomTopBar(
+    open: OpenRoom,
+    onAction: (RoomsAction) -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior,
+) {
     TopAppBar(
+        scrollBehavior = scrollBehavior,
         navigationIcon = {
             IconButton(onClick = { onAction(RoomsAction.CloseRoom) }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -605,7 +627,12 @@ private fun countryFlag(code: String?): String? {
     return String(Character.toChars(first)) + String(Character.toChars(second))
 }
 
-private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+/**
+ * Localized clock time. Was `ofPattern("HH:mm")`, which forced a 24-hour clock on every
+ * locale and ignored the user's 12/24-hour system preference.
+ */
+private val timeFormatter =
+    DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
 
 private fun formatTime(epochMillis: Long): String =
     timeFormatter.format(Instant.ofEpochMilli(epochMillis))

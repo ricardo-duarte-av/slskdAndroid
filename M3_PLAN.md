@@ -247,43 +247,73 @@ What the rollout established:
 - **Punctuation and protocol tokens stay in code**: `" · "`, and the slskd `TransferStates` flag
   strings (`"Errored"`, `"Cancelled"`, …) which are matched against the wire format, not shown.
 
-### Stage 2b — Remaining localization gaps (not extraction)
+### Stage 2b — Remaining localization gaps ✅ **DONE**
 
-Extraction is complete, but the app is still not fully localizable. These are **format** problems,
-deliberately left rather than half-fixed:
+- **`formatBytes` existed in four copies**, each pinned to `Locale.US`. Consolidated into
+  `core:designsystem`'s `Formatters.kt`, with the decimal separator now taken from the locale and
+  the unit symbols (`B/KB/MB/GB/TB`) moved to resources. **Sizes stay binary (1024-based)** —
+  `Formatter.formatFileSize` would localize units for free but is SI on modern Android, which would
+  visibly shift every size in the app (1 GiB → "1.07 GB"); Soulseek reports binary.
+- **`qualityLabel`, `formatDuration`, `fileMeta` were duplicated** between search and browse,
+  as were their test files. Now shared. `kHz`/`kbps` stay untranslated — SI symbols, identical
+  across locales; the defect there was the decimal separator, not the symbol.
+- **Locale is read observably.** `Locale.getDefault()` inside a composable is invisible to
+  composition, so a runtime locale change would leave already-composed text stale. The composable
+  formatters read `LocalConfiguration.current.locales[0]`; pure variants take an explicit `Locale`
+  so they stay plain-JVM testable and deterministic. (Caught by lint's `NonObservableLocale`.)
+- **Time formats are localized**: `ofPattern("HH:mm")` → `ofLocalizedTime(SHORT)` in chat and
+  rooms, `ofPattern("MMM d, HH:mm")` → `ofLocalizedDateTime(MEDIUM, SHORT)` in the search list.
+  These forced a 24-hour clock and US field order on every locale.
+- **slskd's error text is now translatable.** `ConnectionFailure` (in `core:model`, so features
+  don't need `core:network`) replaces `IOException("Authentication failed — check the API key")`
+  with typed cases — `InvalidUrl`, `AuthRejected`, `HttpError(code)`, `Unreachable` — mapped to
+  resources in the ViewModel.
+- **One Stage 2 miss found and fixed**: the browse selection bar still had a hand-rolled
+  `"$count file${if (count == 1) "" else "s"}"`.
 
-- **`formatBytes` hardcodes `Locale.US`** (`String.format(Locale.US, "%.1f %s", …)`) so the decimal
-  separator is always a point, and the unit symbols `B/KB/MB/GB/TB` are literals. Same for
-  `"$it kbps"` and `"$value kHz"` in the file-metadata lines.
-- **Time formats are hardcoded patterns** — `DateTimeFormatter.ofPattern("HH:mm")` in chat and
-  rooms, `"MMM d, HH:mm"` in the search list. These are top-level `private val`s, so wiring them to
-  resources means making them composable or context-aware; the better fix is
-  `ofLocalizedTime(FormatStyle.SHORT)`, which respects the user's 12/24-hour preference. Two unused
-  `*_time_format` resources were removed rather than left dangling.
-- **slskd's own error text is untranslatable** — it arrives as `UiText.Raw` from `core:network`
-  (`SlskdConnectionTester`) and repositories' `Throwable.message`. Fixing this means typed failures
-  in `core:network`, which is a separate refactor.
+Still open: repositories other than the connection tester surface raw `Throwable.message` (Retrofit
+/ OkHttp text) as `UiText.Raw`. Making those typed too is a larger refactor across every repository
+and is not covered here.
 
-**Still to verify on device:** pseudolocale (`en-XA`) run for truncation and concatenation, and an
-RTL (`ar-XB`) pass — `supportsRtl="true"` is declared but has never been exercised.
+### Stage 3 — Component conformance ✅ **DONE**
 
-### Stage 3 — Component conformance (medium, design-visible)
+- **B5 shape tokens.** `nestedCardShape` reads `MaterialTheme.shapes` (large/medium/small) instead
+  of literal 16/12/8dp. Same values, but a token now.
+- **B6 `ListItem`.** Settings rows, search options toggles and chat conversation rows. Toggle rows
+  also gained `Modifier.toggleable(role = Role.Switch)` so a screen reader announces one control.
+  *alpha23 deprecated the `headlineContent`-first overload — the trailing-lambda form is used.*
+- **B7 progress consistency.** Search uses `LinearWavyProgressIndicator`, matching the transfer bars.
+- **B8 app bar scroll behaviour.** 17 of 19 `TopAppBar`s; the two omissions
+  (`ConnectionSetupScreen`, `PlaceholderScreen`) have no scrolling content.
+- **B9 transient feedback.** `SnackbarHost` on Downloads and Uploads, fed by a one-shot `Channel`
+  of events alongside the state flow. This also fixed a real defect: `runBulk` swallowed every
+  failure, so a bulk action that failed was indistinguishable from one that worked until the next
+  poll contradicted it. Failures are now counted and reported.
+  - **Undo is offered only where it is real.** Downloads can be restored by re-enqueuing
+    (username, filename, size) — exactly what Retry does. **Uploads deliberately have no Undo**:
+    they are peer-driven and slskd exposes no re-initiation endpoint, so the button would do
+    nothing.
+- **Expressive components — none adopted.** See below; all three candidates were rejected on
+  inspection or reverted after testing.
 
-Depends on Stage 0 and Stage 2.
+Three candidates were considered. **None survived**, which is a result rather than a gap — the
+components exist, but none of them fits the content we actually have:
 
-- B6: `ListItem` for settings rows, toggle rows, conversation rows, room rows.
-- B8: `scrollBehavior` on all 11 top app bars; consider Medium/Large for Search and Browse.
-- B7: consistent progress indicators — wavy everywhere or plain everywhere.
-- B9: `SnackbarHost` in each `Scaffold`; route errors through it; add undo to destructive bulk
-  actions.
-- B5: shape tokens via `MaterialExpressiveTheme(shapes = …)` using `largeIncreased` /
-  `extraLargeIncreased`; `DepthCard` reads the ladder from the theme instead of literals.
-- Expressive components where they earn their place: selection bar → `FloatingToolbar`, sort
-  dropdown → `ButtonGroup`, per-peer overflow → `AppBarRow`. All confirmed present in the pinned
-  alpha23.
+- **`HorizontalFloatingToolbar` for the selection bars** — *tried, then reverted.* It is designed
+  as a compact, content-wrapping pill of icon actions and enforces a fixed
+  `FloatingToolbarDefaults.containerSize`. Our selection bar carries a text summary
+  ("3 files · 41.2 MB") plus two labelled buttons, and forcing `fillMaxWidth()` on it — with a
+  `Spacer(weight(1f))` that needs bounded constraints the toolbar doesn't provide — produced a
+  container occupying roughly half the screen on device. Using it properly would mean dropping the
+  summary text and reducing the actions to icons: a redesign of the selection UX, not a component
+  swap. The `Surface`+`Row` bottom bar is retained.
 
-**Verification:** screenshot diff per screen before/after; this is the stage most likely to need
-your eye rather than a test.
+- **`ButtonGroup` for the sort selector** — the labels are "Upload Speed (Fastest to Slowest)" and
+  "Queue Depth (Least to Most)". A segmented row of two long labels overflows badly; the dropdown
+  is the right control until the labels are shortened.
+- **`AppBarRow` for overflow** — it exists to collapse a *row of app bar actions* into a menu. Our
+  app bars have at most two actions, and the per-peer overflow menus aren't in an app bar at all.
+  Adopting it would add indirection without solving a problem we have.
 
 ### Stage 4 — Adaptive layout (medium)
 

@@ -14,9 +14,13 @@ class FakeDownloadsRepository : DownloadsRepository {
     val retried = mutableListOf<Download>()
     val enqueued = mutableListOf<Triple<String, String, Long>>()
 
+    /** When true, [cancel] throws — so tests can drive the bulk-failure path. */
+    var failCancel = false
+
     override fun downloads(): Flow<List<Download>> = downloadsFlow
 
     override suspend fun cancel(username: String, id: String, remove: Boolean) {
+        if (failCancel) error("cancel failed")
         cancelled += Triple(username, id, remove)
     }
 

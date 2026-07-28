@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -24,6 +25,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -31,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -54,7 +57,12 @@ internal fun SettingsScreen(
     onAction: (SettingsAction) -> Unit,
     onBack: () -> Unit,
 ) {
+    // M3 expects a scroll behaviour on app bars over scrolling content; without one the
+    // bar is a static block that never yields vertical space.
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -63,6 +71,7 @@ internal fun SettingsScreen(
                     }
                 },
                 title = { Text(stringResource(R.string.settings_title)) },
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { padding ->
@@ -124,27 +133,20 @@ private fun CardStyleSetting(
     }
 }
 
+/**
+ * A settings row. Uses M3's [ListItem] rather than a hand-rolled Row+Column+Spacer, so the
+ * headline/supporting/trailing slots get their specified metrics, type roles and colours.
+ */
 @Composable
 private fun SettingRow(
     title: String,
     subtitle: String,
     trailing: @Composable () -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        trailing()
-    }
+    ListItem(
+        supportingContent = { Text(subtitle) },
+        trailingContent = trailing,
+    ) { Text(title) }
 }
 
 @Composable

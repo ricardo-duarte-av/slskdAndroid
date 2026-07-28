@@ -38,11 +38,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -89,8 +92,16 @@ internal fun UsersScreen(
     // While a user is open/loading, back returns to the prompt rather than leaving the tab.
     BackHandler(enabled = uiState !is UsersUiState.Idle) { onAction(UsersAction.Close) }
 
+    // M3 expects a scroll behaviour on app bars over scrolling content; without one the
+
+    // bar is a static block that never yields vertical space.
+
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
+
     Scaffold(
-        topBar = { UsersTopBar(uiState, onAction, onSettings) },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = { UsersTopBar(uiState, onAction, onSettings, scrollBehavior) },
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (uiState) {
@@ -125,7 +136,12 @@ internal fun UsersScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UsersTopBar(uiState: UsersUiState, onAction: (UsersAction) -> Unit, onSettings: () -> Unit) {
+private fun UsersTopBar(
+    uiState: UsersUiState,
+    onAction: (UsersAction) -> Unit,
+    onSettings: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior,
+) {
     val title = when (uiState) {
         is UsersUiState.Idle -> stringResource(R.string.users_title)
         is UsersUiState.Loading -> uiState.username
@@ -134,6 +150,7 @@ private fun UsersTopBar(uiState: UsersUiState, onAction: (UsersAction) -> Unit, 
     }
     TopAppBar(
         title = { Text(title) },
+        scrollBehavior = scrollBehavior,
         actions = {
             if (uiState !is UsersUiState.Idle) {
                 IconButton(onClick = { onAction(UsersAction.Close) }) {
