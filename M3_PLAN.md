@@ -315,15 +315,37 @@ components exist, but none of them fits the content we actually have:
   app bars have at most two actions, and the per-peer overflow menus aren't in an app bar at all.
   Adopting it would add indirection without solving a problem we have.
 
-### Stage 4 — Adaptive layout (medium)
+### Stage 4 — Adaptive layout — **PARTLY DONE**
 
-- B11: `currentWindowAdaptiveInfo()` / window size classes for content, not just the nav suite.
-- Max content width 840–1040dp on Large/XL; consider list-detail for Search list → detail and
-  Rooms list → room, which are already shaped like list-detail.
-- B12: spacing tokens in `core:designsystem`, 8dp grid.
-- B10: `PredictiveBackHandler` + `NavHost` shared-axis transitions.
+Done (2026-07-28):
 
-**Verification:** foldable + tablet emulator; predictive back gesture on each nested screen.
+- **B11 readable content width.** `ReadableWidth` in `core:designsystem` caps a scrolling column at
+  840dp and centres it; applied to the 9 lists across Search (list + detail), Downloads, Uploads,
+  Rooms, Chat and Browse (tree + files). Applied to the *lists*, not whole screens, so app bars and
+  bottom bars stay full-bleed. **Below 840dp this is a no-op**, so it changes nothing on a phone —
+  it only takes effect on tablets, foldables and desktop windows.
+- **B12 spacing tokens.** `Spacing` (4/8/16/24/32dp) defined in `core:designsystem`. Existing
+  off-grid literals (2/6/10/14dp) are *not* rewritten — see below.
+- **B10 predictive back + destination motion.** `android:enableOnBackInvokedCallback="true"` stated
+  explicitly rather than relying on the targetSdk default, and the `NavHost` now uses shared-axis
+  (X) transitions instead of the library's default fade, which read as a cut on a 7-tab app.
+
+Deliberately **not** done, with reasons:
+
+- **Mass spacing migration.** Rewriting every 2/6/10/14dp literal to the 8dp grid would shift the
+  density of every dense list row at once, and there is no way to judge the result except by
+  looking at each screen. The tokens exist so new code has a vocabulary; migration should happen
+  screen by screen alongside other visual work.
+- **List-detail on large screens.** Search list to detail, and Rooms list to open room, are shaped
+  like list-detail panes and would benefit on tablets. That is an architectural change to
+  navigation (two panes, a selected-item concept in state, back behaviour that differs by size
+  class), not a layout tweak, and it wants a design decision first.
+- **`PredictiveBackHandler`.** The 8 `BackHandler` sites change state (close thread, clear
+  selection) rather than navigating. Wiring the progress flow means designing a per-screen
+  animation for each, which is design work rather than conformance.
+
+**Needs a large screen to verify.** The width cap is provably inert on a phone, so a phone build
+confirms nothing about it either way — it wants a tablet or a resizable emulator.
 
 ### Stage 5 — Accessibility sweep (small–medium)
 

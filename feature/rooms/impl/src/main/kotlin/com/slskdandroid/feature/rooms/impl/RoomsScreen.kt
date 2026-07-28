@@ -73,6 +73,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.AvailableRoom
@@ -245,15 +246,17 @@ private fun RoomList(list: ListState, onAction: (RoomsAction) -> Unit) {
             if (list.rooms.isEmpty()) {
                 CenteredMessage(stringResource(R.string.rooms_empty))
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(list.rooms, key = { it }) { room ->
-                        RoomRow(
-                            name = room,
-                            onOpen = { onAction(RoomsAction.OpenRoom(room)) },
-                            onLeave = { onAction(RoomsAction.LeaveRoom(room)) },
-                        )
+                ReadableWidth {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(list.rooms, key = { it }) { room ->
+                            RoomRow(
+                                name = room,
+                                onOpen = { onAction(RoomsAction.OpenRoom(room)) },
+                                onLeave = { onAction(RoomsAction.LeaveRoom(room)) },
+                            )
+                        }
                     }
-                }
+    }
             }
     }
 }
@@ -335,7 +338,12 @@ private fun RoomContent(open: OpenRoom, onAction: (RoomsAction) -> Unit, onUserI
         // stop every visible card recomposing on each poll.
         itemsIndexed(
             items = open.messages,
-            key = { index, message -> "$index ${message.timestampMillis} ${message.username}" },
+            // NUL separator so a username containing the delimiter can't collide with a
+            // neighbouring field. Written as \u0000 rather than a raw byte: a literal NUL makes
+            // the file binary to git, grep and diff.
+            key = { index, message ->
+                "$index\u0000${message.timestampMillis}\u0000${message.username}"
+            },
         ) { _, message ->
             MessageItem(
                 message = message,

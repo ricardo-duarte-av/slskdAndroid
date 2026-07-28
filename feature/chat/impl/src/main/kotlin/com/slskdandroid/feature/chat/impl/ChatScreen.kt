@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.Conversation
@@ -185,15 +186,17 @@ private fun ConversationList(
             if (list.conversations.isEmpty()) {
                 CenteredMessage(stringResource(R.string.chat_empty))
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(list.conversations, key = { it.username }) { conversation ->
-                        ConversationRow(
-                            conversation = conversation,
-                            avatar = avatars[conversation.username],
-                            onClick = { onAction(ChatAction.OpenConversation(conversation.username)) },
-                        )
+                ReadableWidth {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(list.conversations, key = { it.username }) { conversation ->
+                            ConversationRow(
+                                conversation = conversation,
+                                avatar = avatars[conversation.username],
+                                onClick = { onAction(ChatAction.OpenConversation(conversation.username)) },
+                            )
+                        }
                     }
-                }
+    }
             }
     }
 }
@@ -285,7 +288,9 @@ private fun ThreadContent(thread: ThreadState, onAction: (ChatAction) -> Unit) {
         // message well enough to stop every visible card recomposing on each poll.
         itemsIndexed(
             items = thread.messages,
-            key = { index, message -> "$index ${message.timestampMillis} ${message.id}" },
+            key = { index, message ->
+                "$index\u0000${message.timestampMillis}\u0000${message.id}"
+            },
         ) { _, message ->
             val sender = if (message.isOutgoing) stringResource(R.string.chat_sender_self) else message.username
             MessageCard(

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.Search
@@ -121,19 +122,21 @@ internal fun SearchListScreen(
                     if (state.searches.isEmpty()) {
                         CenteredMessage(stringResource(R.string.search_empty))
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp),
-                        ) {
-                            items(state.searches, key = { it.id }) { search ->
-                                SearchRow(
-                                    search = search,
-                                    onOpen = { onOpenSearch(search.id) },
-                                    onDelete = { onAction(SearchListAction.Delete(search.id)) },
-                                )
-                                HorizontalDivider()
+                        ReadableWidth {
+    LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 16.dp),
+                            ) {
+                                items(state.searches, key = { it.id }) { search ->
+                                    SearchRow(
+                                        search = search,
+                                        onOpen = { onOpenSearch(search.id) },
+                                        onDelete = { onAction(SearchListAction.Delete(search.id)) },
+                                    )
+                                    HorizontalDivider()
+                                }
                             }
-                        }
+    }
                     }
             }
         }

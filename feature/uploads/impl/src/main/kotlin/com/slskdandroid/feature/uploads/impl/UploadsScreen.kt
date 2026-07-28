@@ -65,6 +65,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.designsystem.component.formatBytes
+import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.designsystem.component.TransferItem
@@ -289,21 +290,23 @@ private fun UploadsList(
 ) {
     // Each peer is a nested card (peer → directory → file), matching Search and Downloads. The peer
     // is the lazy-item boundary, so list virtualization is preserved.
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(uiState.users, key = { "user-${it.username}" }) { user ->
-            UserCard(
-                user = user,
-                uiState = uiState,
-                onAction = onAction,
-                onBrowseUser = onBrowseUser,
-                onUserInfo = onUserInfo,
-                onChatUser = onChatUser,
-                modifier = Modifier.animateItem(),
-            )
+    ReadableWidth {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(uiState.users, key = { "user-${it.username}" }) { user ->
+                UserCard(
+                    user = user,
+                    uiState = uiState,
+                    onAction = onAction,
+                    onBrowseUser = onBrowseUser,
+                    onUserInfo = onUserInfo,
+                    onChatUser = onChatUser,
+                    modifier = Modifier.animateItem(),
+                )
+            }
         }
     }
 }
