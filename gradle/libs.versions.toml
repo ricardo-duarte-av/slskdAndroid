@@ -24,7 +24,7 @@ androidxDataStore = "1.3.0-alpha09"
 
 # Compose — bleeding edge: BOM for the common artifacts, material3 pinned to a 1.5 alpha
 androidxComposeBom = "2026.05.01"
-androidxComposeMaterial3 = "1.5.0-alpha21"
+androidxComposeMaterial3 = "1.5.0-alpha23"
 
 # Networking
 retrofit = "3.0.0"

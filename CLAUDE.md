@@ -14,7 +14,7 @@ Versions are centralized in `gradle/libs.versions.toml`.
 
 - **Gradle 9.5.1**, **AGP 9.2.1**, **Kotlin 2.4.0**, **KSP 2.3.9** (KSP2, decoupled from the Kotlin version), **Hilt 2.59.2**.
 - **compileSdk / targetSdk 37, minSdk 26.** Requires build-tools `37.0.0` and an `android-37*` platform. See "Locating the SDK" below — the path is per-workstation, don't assume one.
-- **Compose:** BOM `2026.05.01` for the common artifacts, with `androidx.compose.material3` **pinned to `1.5.0-alpha21`** (overrides the BOM) for the Expressive APIs.
+- **Compose:** BOM `2026.05.01` for the common artifacts, with `androidx.compose.material3` **pinned to `1.5.0-alpha23`** (overrides the BOM) for the Expressive APIs.
 - **JDK 17** for compilation (system Java is 21; toolchain targets 17).
 
 ### Bleeding-edge gotchas already hit (don't re-discover these)

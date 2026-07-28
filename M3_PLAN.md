@@ -2,16 +2,15 @@
 
 Audit of the current UI against Material 3 / M3 Expressive, plus a staged remediation plan.
 
-Audited 2026-07-28 against `androidx.compose.material3` **1.5.0-alpha21** (pinned in
-`gradle/libs.versions.toml`, overriding Compose BOM `2026.05.01`).
+Audited 2026-07-28 against `androidx.compose.material3` **1.5.0-alpha23** (pinned in
+`gradle/libs.versions.toml`, overriding Compose BOM `2026.05.01`). The audit was originally taken
+against alpha21; the pin was bumped to alpha23 on 2026-07-28 — see Stage 0.
 
 **Scope note:** every finding below cites a file and line that was read during the audit.
 
-**API surface:** `alpha21` is not present anywhere on this machine, but the **`alpha23` AAR is**
-(`~/.gradle/caches/.../material3-android/1.5.0-alpha23/material3.aar`), and it was decompiled to
-enumerate what actually exists. Findings below name real APIs from that artifact. Caveat: alpha23
-is **two alphas newer** than the pin, so presence there does not prove presence in alpha21 — each
-adoption still needs a compile check (see Stage 0).
+**API surface:** the component inventory below was taken by decompiling the alpha23 AAR
+(`~/.gradle/caches/.../material3-android/1.5.0-alpha23/material3.aar`), so the named APIs are real
+rather than remembered. Since the project now pins alpha23, that inventory matches the build.
 
 ---
 
@@ -169,23 +168,26 @@ Sequencing rationale: Stage 1 is cheap and touches few files. Stage 2 is mechani
 edit call sites, so they must come after Stage 2 to avoid rebasing string extraction onto moved
 code.
 
-### Stage 0 — API verification spike (blocker for Stage 3)
+### Stage 0 — API verification spike ✅ **DONE**
 
-Mostly **done** — the alpha23 AAR was decompiled during this audit and the component inventory is
-folded into B5–B8 above. What remains is small:
+**DONE** (2026-07-28).
 
-1. **Confirm against alpha21, not alpha23.** The pin is two alphas older than the artifact that was
-   inspected. Cheapest check: a scratch file importing each component to be adopted, then
-   `:app:compileDebugKotlin`. Anything that doesn't resolve drops out of Stage 3.
-2. **Find the required `@OptIn` marker per component** (`ExperimentalMaterial3ExpressiveApi` vs
-   `ExperimentalMaterial3Api`) — these move between alphas.
-3. **Decide the pin.** The catalog has said `1.5.0-alpha21` since the *initial commit* (`d96c132`,
-   2026-06-17) and has never been touched, so it is deliberate, not drift. But alpha23 is out and
-   the expressive surface is still moving; bumping before investing in Stage 3 avoids adopting an
-   API that changed shape one release later.
+1. **Pin bumped alpha21 → alpha23.** The catalog had said `1.5.0-alpha21` since the *initial
+   commit* (`d96c132`, 2026-06-17) — deliberate, not drift — but alpha23 was already out and the
+   expressive surface is still moving, so bumping *before* Stage 3 avoids adopting an API that
+   changes shape a release later. `assembleDebug`, 74 unit tests and `lintDebug` all pass on
+   alpha23 with no source changes; dependency resolution confirms `material3-android:1.5.0-alpha23`
+   and `material3-adaptive-navigation-suite:1.5.0-alpha23` (both overriding the BOM's 1.4.0). The
+   only warning is a pre-existing `rememberModalBottomSheetState` deprecation in `RoomsScreen`,
+   unrelated to the bump.
+2. **The component inventory in B5–B8 now matches the build**, so Stage 3 no longer needs a
+   confirmation spike.
+3. **Still open:** the required `@OptIn` marker per component
+   (`ExperimentalMaterial3ExpressiveApi` vs `ExperimentalMaterial3Api`) is only discoverable at
+   compile time and moves between alphas — resolve it per component as Stage 3 adopts each.
 
-*Risk:* alpha-to-alpha API churn. Anything adopted in Stage 3 can break on the next bump —
-which is an argument for doing Stage 3 immediately after a deliberate pin decision, not before.
+*Risk:* alpha-to-alpha API churn. Anything adopted in Stage 3 can break on the next bump, so Stage 3
+is best done soon after this pin rather than long after it.
 
 ### Stage 1 — Foundations ✅ **DONE**
 
@@ -277,8 +279,8 @@ Depends on Stage 0 and Stage 2.
 - B5: shape tokens via `MaterialExpressiveTheme(shapes = …)` using `largeIncreased` /
   `extraLargeIncreased`; `DepthCard` reads the ladder from the theme instead of literals.
 - Expressive components where they earn their place: selection bar → `FloatingToolbar`, sort
-  dropdown → `ButtonGroup`, per-peer overflow → `AppBarRow`. All confirmed present in alpha23,
-  pending the alpha21 compile check.
+  dropdown → `ButtonGroup`, per-peer overflow → `AppBarRow`. All confirmed present in the pinned
+  alpha23.
 
 **Verification:** screenshot diff per screen before/after; this is the stage most likely to need
 your eye rather than a test.
@@ -323,9 +325,7 @@ edits the same call sites.
 
 1. **Nav labels (B13)** — keep icon-only, or add labels? Affects Stage 5.
 2. **Strings location** — per-module or shared module? Blocks Stage 2.
-3. **Alpha pin** — hold at alpha21, or move to alpha23+ before investing in expressive components?
-   The pin is original and deliberate (unchanged since `d96c132`), so this is a real decision, not
-   a cleanup. Blocks Stage 0 → Stage 3.
+3. ~~**Alpha pin**~~ — resolved 2026-07-28: bumped to `1.5.0-alpha23` before Stage 3. See Stage 0.
 4. **Accent card style** — B4 can be fixed by pairing an explicit content color, or by dropping the
    `lerp` for real scheme roles (`primaryContainer` ladder). The second is more correct but changes
    the look of a feature you shipped deliberately in v0.1.8.
