@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,7 +110,11 @@ private fun CardStyleSetting(
     onStyleChange: (CardTintStyle) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-        Text(stringResource(R.string.settings_card_style_title), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.settings_card_style_title),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() },
+        )
         Text(
             stringResource(R.string.settings_card_style_subtitle),
             style = MaterialTheme.typography.bodyMedium,
@@ -158,7 +164,7 @@ private fun IntervalSetting(seconds: Int, onSecondsChange: (Int) -> Unit) {
             Text(
                 stringResource(R.string.settings_interval_title),
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).semantics { heading() },
             )
             Text(formatInterval(draft.toInt()), style = MaterialTheme.typography.titleMedium)
         }

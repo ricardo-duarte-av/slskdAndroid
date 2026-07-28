@@ -26,4 +26,6 @@
     <string name="chat_error_send_failed">Couldn\'t send message.</string>
     <string name="chat_error_load_failed">Couldn\'t load conversations.</string>
 
+    <string name="chat_open_conversation">Open conversation</string>
+
 </resources>

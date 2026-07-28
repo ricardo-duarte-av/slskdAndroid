@@ -77,4 +77,7 @@
     <string name="search_show_more">Show %1$d more results (%2$d remaining, %3$s)</string>
     <string name="search_all_shown">All results shown. %1$s</string>
 
+    <!-- Accessibility labels: what activating a row does. -->
+    <string name="search_open_results">Open results</string>
+
 </resources>

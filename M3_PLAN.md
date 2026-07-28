@@ -347,16 +347,39 @@ Deliberately **not** done, with reasons:
 **Needs a large screen to verify.** The width cap is provably inert on a phone, so a phone build
 confirms nothing about it either way — it wants a tablet or a resizable emulator.
 
-### Stage 5 — Accessibility sweep (small–medium)
+### Stage 5 — Accessibility sweep — **PARTLY DONE**
 
-- Systematic contrast audit of every `on*` pairing, light and dark, standard and high contrast.
-- Touch target audit (48dp minimum) on the small icon buttons in dense rows.
-- Semantics pass: heading roles, merged descendants on cards, meaningful `onClickLabel`s.
-- Decide B13 (nav labels) with real data — it's a judgment call, not a defect.
+Done (2026-07-28):
 
-**Verification:** Accessibility Scanner; TalkBack end-to-end on each of the 7 sections.
+- **Merged row semantics.** File and transfer rows announced their filename and their metadata as
+  two separate stops; a screen-reader user swiping a search result heard the name, swiped, heard
+  "8.4 MB · 320 kbps · 3:07", swiped again for the next file. The name+metadata column is now
+  `semantics(mergeDescendants = true)`, so each row is one utterance. Applied in Search, Downloads
+  and Uploads.
+- **`onClickLabel` on clickable rows.** 6 of the 10 bare `clickable(onClick = …)` rows now say
+  what activating them does ("Open results", "Open conversation", "Open room", "Open profile",
+  expand/collapse). TalkBack previously announced only "double-tap to activate".
+- **Heading semantics.** `SectionHeader` and the Settings section titles are marked
+  `semantics { heading() }`, so heading navigation can jump between sections instead of swiping
+  through every control.
 
----
+Audited and found **already correct** — recorded so it isn't re-investigated:
+
+- **Touch targets.** No interactive element has an explicit size below 48dp; every small `size()`
+  is on a decorative `Icon` inside a larger target, and all 28 `IconButton`s carry M3's 48dp
+  minimum by default.
+- **Decorative icons.** The 10 `contentDescription = null` icons are all genuinely decorative —
+  each sits beside a text label that already carries the meaning.
+- **Alpha-modified content colours.** None remain; the two that existed were fixed in Stage 1.
+
+Still to do:
+
+- **Contrast measurement.** Everything above is structural. Actual contrast ratios cannot be
+  verified statically here: the app uses dynamic colour, so the real pairings depend on the user's
+  wallpaper, and Android's three contrast levels multiply the cases. This needs Accessibility
+  Scanner on device across light/dark and standard/medium/high contrast.
+- **TalkBack end-to-end pass** over each of the 7 sections.
+- **B13 nav labels** — still an open judgement call, not a defect (see Open questions).
 
 ## Suggested order
 
