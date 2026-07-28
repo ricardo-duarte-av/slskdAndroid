@@ -9,4 +9,7 @@ android {
 dependencies {
     api(projects.feature.downloads.api)
     implementation(projects.core.model)
+    // api, not implementation: the ViewModel's constructor exposes @DefaultDispatcher, so
+    // the consuming module's Hilt/KSP must be able to resolve it (see CLAUDE.md).
+    api(projects.core.common)
 }

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="downloads_title">Downloads</string>
+    <string name="downloads_loading">Loading downloads…</string>
+    <string name="downloads_empty">No downloads yet. Queue files from Search.</string>
+    <string name="downloads_load_failed">Couldn\'t load downloads</string>
+
+    <!-- Multi-select mode -->
+    <string name="downloads_clear_selection">Clear selection</string>
+    <string name="downloads_selected_count">%1$d selected</string>
+    <string name="downloads_cancel">Cancel</string>
+    <string name="downloads_remove">Remove</string>
+    <string name="downloads_toggle_selection">Toggle selection</string>
+    <!-- Announced by TalkBack for the long-press that enters multi-select. -->
+    <string name="downloads_select_transfer">Select transfer</string>
+
+    <!-- Bulk action menus -->
+    <string name="downloads_bulk_retry">Retry</string>
+    <string name="downloads_filter_errored">Errored</string>
+    <string name="downloads_filter_cancelled">Cancelled</string>
+    <string name="downloads_filter_all">All</string>
+    <string name="downloads_filter_queued">Queued</string>
+    <string name="downloads_filter_in_progress">In progress</string>
+    <string name="downloads_filter_succeeded">Succeeded</string>
+    <string name="downloads_filter_all_completed">All completed</string>
+
+    <!-- Peer / directory cards -->
+    <string name="downloads_expand_user">Expand %1$s</string>
+    <string name="downloads_collapse_user">Collapse %1$s</string>
+    <string name="downloads_expand_directory">Expand directory</string>
+    <string name="downloads_collapse_directory">Collapse directory</string>
+    <string name="downloads_more_actions_for">More actions for %1$s</string>
+    <string name="downloads_info">Info</string>
+    <string name="downloads_browse_user">Browse user</string>
+    <string name="downloads_chat">Chat</string>
+
+    <!-- Per-transfer status line. %1$s values are already-formatted sizes. -->
+    <string name="downloads_status_in_progress">%1$s / %2$s</string>
+    <string name="downloads_status_in_progress_speed">%1$s / %2$s · %3$s/s</string>
+    <string name="downloads_status_queued_position">Queued · #%1$d</string>
+    <string name="downloads_status_queued">Queued · %1$s</string>
+    <string name="downloads_status_done">Done · %1$s</string>
+    <string name="downloads_status_failed">Failed · %1$s</string>
+    <string name="downloads_status_failed_reason">Failed · %1$s · %2$s</string>
+
+    <!-- Peer card header: username followed by their file count. -->
+    <plurals name="downloads_peer_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="downloads_peer_summary">%1$s · %2$s</string>
+
+</resources>

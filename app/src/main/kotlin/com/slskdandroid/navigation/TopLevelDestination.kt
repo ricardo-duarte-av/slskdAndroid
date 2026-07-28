@@ -1,5 +1,8 @@
 package com.slskdandroid.navigation
 
+import androidx.annotation.StringRes
+import com.slskdandroid.R
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Download
@@ -20,14 +23,14 @@ import com.slskdandroid.feature.users.api.USERS_ROUTE
 /** The top-level sections shown in the adaptive navigation suite, in display order. */
 enum class TopLevelDestination(
     val route: String,
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector,
 ) {
-    SEARCH(SEARCH_ROUTE, "Search", Icons.Filled.Search),
-    DOWNLOADS(DOWNLOADS_ROUTE, "Downloads", Icons.Filled.Download),
-    UPLOADS(UPLOADS_ROUTE, "Uploads", Icons.Filled.Upload),
-    ROOMS(ROOMS_ROUTE, "Rooms", Icons.Filled.Forum),
-    CHAT(CHAT_ROUTE, "Chat", Icons.AutoMirrored.Filled.Chat),
-    USERS(USERS_ROUTE, "Users", Icons.Filled.People),
-    BROWSE(BROWSE_ROUTE, "Browse", Icons.Filled.Folder),
+    SEARCH(SEARCH_ROUTE, R.string.nav_search, Icons.Filled.Search),
+    DOWNLOADS(DOWNLOADS_ROUTE, R.string.nav_downloads, Icons.Filled.Download),
+    UPLOADS(UPLOADS_ROUTE, R.string.nav_uploads, Icons.Filled.Upload),
+    ROOMS(ROOMS_ROUTE, R.string.nav_rooms, Icons.Filled.Forum),
+    CHAT(CHAT_ROUTE, R.string.nav_chat, Icons.AutoMirrored.Filled.Chat),
+    USERS(USERS_ROUTE, R.string.nav_users, Icons.Filled.People),
+    BROWSE(BROWSE_ROUTE, R.string.nav_browse, Icons.Filled.Folder),
 }

@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.BrowseProgress
 import com.slskdandroid.core.data.BrowseRepository
+import com.slskdandroid.core.designsystem.component.UiText
+import com.slskdandroid.core.designsystem.component.toUiText
 import com.slskdandroid.core.data.DownloadsRepository
 import com.slskdandroid.core.model.BrowseDirectory
 import com.slskdandroid.core.model.SearchResultFile
@@ -140,7 +142,7 @@ class BrowseViewModel @Inject constructor(
                     )
                 }
             }
-            .catch { state.value = BrowseState.Error(username, it.message ?: "Couldn't browse $username") }
+            .catch { state.value = BrowseState.Error(username, it.toUiText(R.string.browse_load_failed, username)) }
             .launchIn(viewModelScope)
     }
 
@@ -195,7 +197,7 @@ class BrowseViewModel @Inject constructor(
     private sealed interface BrowseState {
         data object Idle : BrowseState
         data class Loading(val username: String, val percent: Int?) : BrowseState
-        data class Error(val username: String, val message: String) : BrowseState
+        data class Error(val username: String, val message: UiText) : BrowseState
         data class Ready(
             val username: String,
             val roots: List<Node>,

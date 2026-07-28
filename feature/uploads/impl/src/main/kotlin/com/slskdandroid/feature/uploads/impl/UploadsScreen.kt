@@ -48,12 +48,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.designsystem.component.TransferItem
 import com.slskdandroid.core.designsystem.component.TransferPhase
 import com.slskdandroid.core.designsystem.component.TransferStatusLine
@@ -96,7 +102,12 @@ internal fun UploadsScreen(
     BackHandler(enabled = uiState.inSelectionMode) { onAction(UploadsAction.ClearSelection) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Uploads") }, actions = { SettingsActionButton(onSettings) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.uploads_title)) },
+                actions = { SettingsActionButton(onSettings) },
+            )
+        },
         bottomBar = {
             // Hidden until something is selected; sits above the app's bottom navigation.
             if (uiState.inSelectionMode) {
@@ -112,14 +123,14 @@ internal fun UploadsScreen(
             BulkActionBar(onAction)
 
             when (uiState.loadState) {
-                LoadState.Loading -> CenteredMessage("Loading uploads…")
+                LoadState.Loading -> CenteredMessage(stringResource(R.string.uploads_loading))
 
                 is LoadState.Error ->
-                    CenteredMessage(uiState.loadState.message, MaterialTheme.colorScheme.error)
+                    CenteredMessage(uiState.loadState.message.asString(), MaterialTheme.colorScheme.error)
 
                 LoadState.Loaded ->
                     if (uiState.users.isEmpty()) {
-                        CenteredMessage("No uploads. Peers' requests for your shared files appear here.")
+                        CenteredMessage(stringResource(R.string.uploads_empty))
                     } else {
                         UploadsList(uiState, onAction, onBrowseUser, onUserInfo, onChatUser)
                     }
@@ -141,12 +152,15 @@ private fun SelectionBar(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("$count selected", style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.uploads_selected_count, count),
+                style = MaterialTheme.typography.titleSmall,
+            )
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onClear) { Text("Clear") }
+            TextButton(onClick = onClear) { Text(stringResource(R.string.uploads_clear)) }
             Spacer(Modifier.width(8.dp))
             // Remove covers every state: with remove=true it cancels active transfers too.
-            Button(onClick = onRemove) { Text("Remove") }
+            Button(onClick = onRemove) { Text(stringResource(R.string.uploads_remove)) }
         }
     }
 }
@@ -160,22 +174,22 @@ private fun BulkActionBar(onAction: (UploadsAction) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         MenuButton(
-            label = "Cancel",
+            label = stringResource(R.string.uploads_bulk_cancel),
             options = listOf(
-                "All" to CancelFilter.All,
-                "Queued" to CancelFilter.Queued,
-                "In progress" to CancelFilter.InProgress,
+                stringResource(R.string.uploads_filter_all) to CancelFilter.All,
+                stringResource(R.string.uploads_filter_queued) to CancelFilter.Queued,
+                stringResource(R.string.uploads_filter_in_progress) to CancelFilter.InProgress,
             ),
             onSelect = { onAction(UploadsAction.BulkCancel(it)) },
             modifier = Modifier.weight(1f),
         )
         MenuButton(
-            label = "Remove All",
+            label = stringResource(R.string.uploads_bulk_remove_all),
             options = listOf(
-                "Succeeded" to RemoveFilter.Succeeded,
-                "Errored" to RemoveFilter.Errored,
-                "Cancelled" to RemoveFilter.Cancelled,
-                "All completed" to RemoveFilter.Completed,
+                stringResource(R.string.uploads_filter_succeeded) to RemoveFilter.Succeeded,
+                stringResource(R.string.uploads_filter_errored) to RemoveFilter.Errored,
+                stringResource(R.string.uploads_filter_cancelled) to RemoveFilter.Cancelled,
+                stringResource(R.string.uploads_filter_all_completed) to RemoveFilter.Completed,
             ),
             onSelect = { onAction(UploadsAction.BulkRemove(it)) },
             modifier = Modifier.weight(1f),
@@ -370,12 +384,19 @@ private fun PeerHeader(
     ) {
         Icon(
             imageVector = if (collapsed) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp,
-            contentDescription = if (collapsed) "Expand $username" else "Collapse $username",
+            contentDescription = stringResource(
+                if (collapsed) R.string.uploads_expand_user else R.string.uploads_collapse_user,
+                username,
+            ),
             tint = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.width(4.dp))
         Text(
-            "$username · $fileCount files",
+            stringResource(
+                R.string.uploads_peer_summary,
+                username,
+                pluralStringResource(R.plurals.uploads_peer_files, fileCount, fileCount),
+            ),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
@@ -395,25 +416,28 @@ private fun PeerOverflowMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
+            Icon(
+                Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.uploads_more_actions_for, username),
+            )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("Info") },
+                text = { Text(stringResource(R.string.uploads_info)) },
                 onClick = {
                     expanded = false
                     onUserInfo(username)
                 },
             )
             DropdownMenuItem(
-                text = { Text("Browse user") },
+                text = { Text(stringResource(R.string.uploads_browse_user)) },
                 onClick = {
                     expanded = false
                     onBrowseUser(username)
                 },
             )
             DropdownMenuItem(
-                text = { Text("Chat") },
+                text = { Text(stringResource(R.string.uploads_chat)) },
                 onClick = {
                     expanded = false
                     onChatUser(username)
@@ -439,7 +463,9 @@ private fun DirectoryHeader(
     ) {
         Icon(
             imageVector = if (collapsed) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp,
-            contentDescription = if (collapsed) "Expand directory" else "Collapse directory",
+            contentDescription = stringResource(
+                if (collapsed) R.string.uploads_expand_directory else R.string.uploads_collapse_directory,
+            ),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
@@ -467,6 +493,7 @@ private fun UploadRow(
     onAction: (UploadsAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectLabel = stringResource(R.string.uploads_select_transfer)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -474,8 +501,19 @@ private fun UploadRow(
                 onClick = {
                     if (inSelectionMode) onAction(UploadsAction.ToggleSelection(upload.id))
                 },
+                onClickLabel = if (inSelectionMode) stringResource(R.string.uploads_toggle_selection) else null,
                 onLongClick = { onAction(UploadsAction.StartSelection(upload.id)) },
+                onLongClickLabel = selectLabel,
             )
+            // Selection mode is otherwise only reachable by long-press; name it as an action so
+            // TalkBack can offer it from the actions menu.
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction(selectLabel) {
+                        onAction(UploadsAction.StartSelection(upload.id)); true
+                    },
+                )
+            }
             .padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -533,21 +571,33 @@ private fun UploadState.toTransferPhase(): TransferPhase = when (this) {
 }
 
 /** A compact, state-appropriate one-liner: state + size/progress/speed/queue position. */
+@Composable
 private fun Upload.statusLine(): String = when (state) {
-    UploadState.InProgress -> {
-        val speed = if (averageSpeed > 0) " · ${formatBytes(averageSpeed.toLong())}/s" else ""
-        "${formatBytes(bytesTransferred)} / ${formatBytes(sizeBytes)}$speed"
-    }
+    UploadState.InProgress ->
+        if (averageSpeed > 0) {
+            stringResource(
+                R.string.uploads_status_in_progress_speed,
+                formatBytes(bytesTransferred),
+                formatBytes(sizeBytes),
+                formatBytes(averageSpeed.toLong()),
+            )
+        } else {
+            stringResource(
+                R.string.uploads_status_in_progress,
+                formatBytes(bytesTransferred),
+                formatBytes(sizeBytes),
+            )
+        }
 
-    UploadState.Queued ->
-        placeInQueue?.let { "Queued · #$it" } ?: "Queued · ${formatBytes(sizeBytes)}"
+    UploadState.Queued -> placeInQueue
+        ?.let { stringResource(R.string.uploads_status_queued_position, it) }
+        ?: stringResource(R.string.uploads_status_queued, formatBytes(sizeBytes))
 
-    UploadState.Completed -> "Sent · ${formatBytes(sizeBytes)}"
+    UploadState.Completed -> stringResource(R.string.uploads_status_sent, formatBytes(sizeBytes))
 
-    UploadState.Failed -> {
-        val reason = exception?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
-        "Failed · ${formatBytes(sizeBytes)}$reason"
-    }
+    UploadState.Failed -> exception?.takeIf { it.isNotBlank() }
+        ?.let { stringResource(R.string.uploads_status_failed_reason, formatBytes(sizeBytes), it) }
+        ?: stringResource(R.string.uploads_status_failed, formatBytes(sizeBytes))
 
     UploadState.Unknown -> formatBytes(sizeBytes)
 }
@@ -563,3 +613,5 @@ private fun formatBytes(bytes: Long): String {
     }
     return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
 }
+
+

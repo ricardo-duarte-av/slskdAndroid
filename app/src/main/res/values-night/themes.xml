@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark counterpart of values/themes.xml. Same style name, dark framework parent, so the
+         pre-Compose window background matches the theme Compose is about to draw. -->
+    <style name="Theme.SlskdAndroid" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>

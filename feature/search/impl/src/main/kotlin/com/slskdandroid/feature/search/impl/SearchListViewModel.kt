@@ -3,6 +3,7 @@ package com.slskdandroid.feature.search.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.SearchRepository
+import com.slskdandroid.core.designsystem.component.toUiText
 import com.slskdandroid.core.model.Search
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -29,7 +30,7 @@ class SearchListViewModel @Inject constructor(
     // Polls the searches list only while the screen is subscribed (see WhileSubscribed below).
     private val searches: Flow<SearchesState> = searchRepository.observeSearches()
         .map<List<Search>, SearchesState> { SearchesState.Loaded(it) }
-        .catch { emit(SearchesState.Error(it.message ?: "Couldn't load searches")) }
+        .catch { emit(SearchesState.Error(it.toUiText(R.string.search_load_failed))) }
 
     val uiState: StateFlow<SearchListUiState> =
         combine(query, starting, searches) { q, isStarting, list ->

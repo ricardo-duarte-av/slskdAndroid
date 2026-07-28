@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -58,12 +59,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.AvailableRoom
 import com.slskdandroid.core.model.RoomMessage
 import com.slskdandroid.core.model.RoomUser
@@ -99,9 +107,13 @@ internal fun RoomsScreen(
     Scaffold(
         topBar = {
             when {
-                search != null -> SimpleTopBar("Find rooms") { onAction(RoomsAction.CloseSearch) }
+                search != null ->
+                    SimpleTopBar(stringResource(R.string.rooms_find)) { onAction(RoomsAction.CloseSearch) }
                 open != null -> RoomTopBar(open, onAction)
-                else -> TopAppBar(title = { Text("Rooms") }, actions = { SettingsActionButton(onSettings) })
+                else -> TopAppBar(
+                    title = { Text(stringResource(R.string.rooms_title)) },
+                    actions = { SettingsActionButton(onSettings) },
+                )
             }
         },
         bottomBar = {
@@ -117,7 +129,7 @@ internal fun RoomsScreen(
         floatingActionButton = {
             if (search == null && open == null) {
                 FloatingActionButton(onClick = { onAction(RoomsAction.OpenSearch) }) {
-                    Icon(Icons.Filled.Search, contentDescription = "Find rooms")
+                    Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.rooms_find))
                 }
             }
         },
@@ -169,16 +181,16 @@ private fun RoomTopBar(open: OpenRoom, onAction: (RoomsAction) -> Unit) {
         title = { Text(open.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         actions = {
             IconButton(onClick = { onAction(RoomsAction.ToggleUsers) }) {
-                Icon(Icons.Filled.Group, contentDescription = "Show members")
+                Icon(Icons.Filled.Group, contentDescription = stringResource(R.string.rooms_show_members))
             }
             var menu by remember { mutableStateOf(false) }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.rooms_more))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
-                        text = { Text("Leave room") },
+                        text = { Text(stringResource(R.string.rooms_leave)) },
                         onClick = {
                             menu = false
                             onAction(RoomsAction.LeaveRoom(open.name))
@@ -195,17 +207,21 @@ private fun RoomList(list: ListState, onAction: (RoomsAction) -> Unit) {
     when (list) {
         ListState.Loading -> CenteredContent {
             CircularProgressIndicator()
-            Text("Loading rooms…", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.rooms_loading), style = MaterialTheme.typography.bodyLarge)
         }
 
         is ListState.Error -> CenteredContent {
-            Text(list.message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
-            Button(onClick = { onAction(RoomsAction.RetryList) }) { Text("Retry") }
+            Text(
+                list.message.asString(),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Button(onClick = { onAction(RoomsAction.RetryList) }) { Text(stringResource(R.string.rooms_retry)) }
         }
 
         is ListState.Loaded ->
             if (list.rooms.isEmpty()) {
-                CenteredMessage("You haven't joined any rooms. Tap search to find some.")
+                CenteredMessage(stringResource(R.string.rooms_empty))
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(list.rooms, key = { it }) { room ->
@@ -239,11 +255,14 @@ private fun RoomRow(name: String, onOpen: () -> Unit, onLeave: () -> Unit) {
         var menu by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $name")
+                Icon(
+                    Icons.Filled.MoreVert,
+                    contentDescription = stringResource(R.string.rooms_more_actions_for, name),
+                )
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
-                    text = { Text("Leave room") },
+                    text = { Text(stringResource(R.string.rooms_leave)) },
                     onClick = {
                         menu = false
                         onLeave()
@@ -261,7 +280,7 @@ private fun RoomContent(open: OpenRoom, onAction: (RoomsAction) -> Unit, onUserI
         return
     }
     if (open.messages.isEmpty()) {
-        CenteredMessage("No messages yet. Be the first to say something.")
+        CenteredMessage(stringResource(R.string.rooms_no_messages))
         return
     }
     // Sender → country, for the per-message flag (drawn from the member snapshot).
@@ -289,8 +308,13 @@ private fun RoomContent(open: OpenRoom, onAction: (RoomsAction) -> Unit, onUserI
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // No stable key: room messages have no id and senders/timestamps can repeat.
-        items(open.messages) { message ->
+        // Room messages have no id and senders/timestamps can repeat. The log is append-only and
+        // re-fetched wholesale every 2s, so position + content identifies a message well enough to
+        // stop every visible card recomposing on each poll.
+        itemsIndexed(
+            items = open.messages,
+            key = { index, message -> "$index ${message.timestampMillis} ${message.username}" },
+        ) { _, message ->
             MessageItem(
                 message = message,
                 countryCode = countries[message.username],
@@ -320,10 +344,29 @@ private fun MessageItem(
         if (message.isSelf) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
     val contentColor =
         if (message.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    // Lower-emphasis colour for the timestamp. Other members' cards sit on a surface container, so
+    // the paired variant role applies; our own sit on primaryContainer, which has no "variant"
+    // partner — there the smaller type scale carries the de-emphasis instead of a colour change.
+    // (Previously both used contentColor.copy(alpha = 0.7f), which has no contrast guarantee.)
+    val timestampColor =
+        if (message.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val replyLabel = stringResource(R.string.rooms_reply_to, message.username)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = {}, onLongClick = onReply),
+            .combinedClickable(
+                // Tapping a message does nothing; the card is clickable only to host the
+                // long-press ripple. onLongClickLabel is what TalkBack announces for the gesture.
+                onClick = {},
+                onLongClick = onReply,
+                onLongClickLabel = replyLabel,
+            )
+            .semantics {
+                // Don't advertise a tap action that does nothing, and surface the long-press as a
+                // named action in TalkBack's actions menu rather than an unlabelled gesture.
+                onClick(action = null)
+                customActions = listOf(CustomAccessibilityAction(replyLabel) { onReply(); true })
+            },
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
     ) {
@@ -352,7 +395,7 @@ private fun MessageItem(
                     Text(
                         formatTime(it),
                         style = MaterialTheme.typography.labelSmall,
-                        color = contentColor.copy(alpha = 0.7f),
+                        color = timestampColor,
                     )
                 }
             }
@@ -370,7 +413,11 @@ private fun MembersSheet(room: OpenRoom, onDismiss: () -> Unit, onMemberClick: (
         val users = room.users
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
-                if (users == null) "Members" else "Members · ${users.size}",
+                if (users == null) {
+                    stringResource(R.string.rooms_members)
+                } else {
+                    stringResource(R.string.rooms_members_count, users.size)
+                },
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -381,7 +428,7 @@ private fun MembersSheet(room: OpenRoom, onDismiss: () -> Unit, onMemberClick: (
                     contentAlignment = Alignment.Center,
                 ) { CircularProgressIndicator() }
 
-                users.isEmpty() -> CenteredMessage("No members.")
+                users.isEmpty() -> CenteredMessage(stringResource(R.string.rooms_no_members))
 
                 else -> LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
                     items(users, key = { it.username }) { user ->
@@ -406,7 +453,7 @@ private fun MemberRow(user: RoomUser, onClick: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Text(user.username, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Text(
-            "${user.fileCount} files",
+            pluralStringResource(R.plurals.rooms_user_files, user.fileCount, user.fileCount),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -419,7 +466,7 @@ private fun SearchContent(search: SearchState, onAction: (RoomsAction) -> Unit) 
         OutlinedTextField(
             value = search.query,
             onValueChange = { onAction(RoomsAction.SearchQueryChanged(it)) },
-            label = { Text("Filter rooms") },
+            label = { Text(stringResource(R.string.rooms_filter)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         )
@@ -427,8 +474,8 @@ private fun SearchContent(search: SearchState, onAction: (RoomsAction) -> Unit) 
             SearchPhase.Loading -> CenteredContent { CircularProgressIndicator() }
 
             is SearchPhase.Error -> CenteredContent {
-                Text(phase.message, color = MaterialTheme.colorScheme.error)
-                Button(onClick = { onAction(RoomsAction.RetrySearch) }) { Text("Retry") }
+                Text(phase.message.asString(), color = MaterialTheme.colorScheme.error)
+                Button(onClick = { onAction(RoomsAction.RetrySearch) }) { Text(stringResource(R.string.rooms_retry)) }
             }
 
             is SearchPhase.Loaded -> {
@@ -438,7 +485,7 @@ private fun SearchContent(search: SearchState, onAction: (RoomsAction) -> Unit) 
                         .sortedByDescending { it.userCount }
                 }
                 if (filtered.isEmpty()) {
-                    CenteredMessage("No rooms match.")
+                    CenteredMessage(stringResource(R.string.rooms_none_match))
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(filtered, key = { it.name }) { room ->
@@ -466,7 +513,7 @@ private fun AvailableRoomRow(room: AvailableRoom, joining: Boolean, onJoin: () -
                 if (room.isPrivate) {
                     Icon(
                         Icons.Filled.Lock,
-                        contentDescription = "Private",
+                        contentDescription = stringResource(R.string.rooms_private),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(14.dp),
                     )
@@ -480,7 +527,7 @@ private fun AvailableRoomRow(room: AvailableRoom, joining: Boolean, onJoin: () -
                 )
             }
             Text(
-                "${room.userCount} users",
+                pluralStringResource(R.plurals.rooms_room_users, room.userCount, room.userCount),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -488,7 +535,7 @@ private fun AvailableRoomRow(room: AvailableRoom, joining: Boolean, onJoin: () -
         if (joining) {
             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
         } else {
-            TextButton(onClick = onJoin) { Text("Join") }
+            TextButton(onClick = onJoin) { Text(stringResource(R.string.rooms_join)) }
         }
     }
 }
@@ -508,7 +555,7 @@ private fun MessageInputBar(
             OutlinedTextField(
                 value = draft,
                 onValueChange = onDraftChange,
-                placeholder = { Text("Message") },
+                placeholder = { Text(stringResource(R.string.rooms_message_placeholder)) },
                 modifier = Modifier.weight(1f),
                 maxLines = 4,
             )
@@ -520,7 +567,7 @@ private fun MessageInputBar(
                 } else {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
+                        contentDescription = stringResource(R.string.rooms_send),
                         tint = if (canSend) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }

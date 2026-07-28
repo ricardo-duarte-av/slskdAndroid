@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,17 +59,17 @@ internal fun SettingsScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 },
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
             )
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             SettingRow(
-                title = "Message notifications",
-                subtitle = "Check slskd in the background and notify on new DMs and room mentions.",
+                title = stringResource(R.string.settings_notifications_title),
+                subtitle = stringResource(R.string.settings_notifications_subtitle),
             ) {
                 Switch(
                     checked = uiState.notificationsEnabled,
@@ -98,17 +99,16 @@ private fun CardStyleSetting(
     onStyleChange: (CardTintStyle) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
-        Text("Card style", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.settings_card_style_title), style = MaterialTheme.typography.titleMedium)
         Text(
-            "How the nested result and transfer cards are tinted. Neutral uses subtle surface " +
-                "shades; Accent tints them with the theme color, deepening as they nest.",
+            stringResource(R.string.settings_card_style_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(12.dp))
         val options = listOf(
-            CardTintStyle.Neutral to "Neutral",
-            CardTintStyle.Accent to "Accent",
+            CardTintStyle.Neutral to stringResource(R.string.settings_card_style_neutral),
+            CardTintStyle.Accent to stringResource(R.string.settings_card_style_accent),
         )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             options.forEachIndexed { index, (value, label) ->
@@ -153,7 +153,11 @@ private fun IntervalSetting(seconds: Int, onSecondsChange: (Int) -> Unit) {
     var draft by remember(seconds) { mutableFloatStateOf(seconds.toFloat()) }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Check interval", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text(
+                stringResource(R.string.settings_interval_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f),
+            )
             Text(formatInterval(draft.toInt()), style = MaterialTheme.typography.titleMedium)
         }
         Slider(
@@ -165,18 +169,19 @@ private fun IntervalSetting(seconds: Int, onSecondsChange: (Int) -> Unit) {
             steps = ((SLIDER_MAX - SLIDER_MIN) / STEP_SECONDS).toInt() - 1,
         )
         Text(
-            "How often the background service polls for new messages. Shorter intervals are more " +
-                "responsive but use more battery and data.",
+            stringResource(R.string.settings_interval_subtitle),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
+/** Composable: each form is a separate resource so translations can reorder and re-unit it. */
+@Composable
 private fun formatInterval(seconds: Int): String = when {
-    seconds < 60 -> "${seconds}s"
-    seconds % 60 == 0 -> "${seconds / 60} min"
-    else -> "${seconds / 60} min ${seconds % 60}s"
+    seconds < 60 -> stringResource(R.string.settings_interval_seconds, seconds)
+    seconds % 60 == 0 -> stringResource(R.string.settings_interval_minutes, seconds / 60)
+    else -> stringResource(R.string.settings_interval_minutes_seconds, seconds / 60, seconds % 60)
 }
 
 private val SLIDER_MIN = NotificationSettings.MIN_INTERVAL_SECONDS.toFloat()

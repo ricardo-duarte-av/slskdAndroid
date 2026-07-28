@@ -1,6 +1,7 @@
 package com.slskdandroid.feature.search.impl
 
 import com.slskdandroid.core.model.SearchResultFile
+import com.slskdandroid.core.designsystem.component.UiText
 
 data class SearchDetailUiState(
     val searchText: String,
@@ -27,7 +28,7 @@ data class SearchOptions(
 sealed interface Phase {
     data object Loading : Phase
 
-    data class Error(val message: String) : Phase
+    data class Error(val message: UiText) : Phase
 
     data class Loaded(
         val isComplete: Boolean,

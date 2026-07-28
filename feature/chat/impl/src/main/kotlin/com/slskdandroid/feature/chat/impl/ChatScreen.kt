@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -59,12 +60,18 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.Conversation
 import com.slskdandroid.core.model.PrivateMessage
 import java.time.Instant
@@ -94,7 +101,7 @@ internal fun ChatScreen(
                 TopAppBar(
                     navigationIcon = {
                         IconButton(onClick = { onAction(ChatAction.CloseConversation) }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.chat_back))
                         }
                     },
                     title = {
@@ -106,7 +113,10 @@ internal fun ChatScreen(
                     },
                 )
             } else {
-                TopAppBar(title = { Text("Chat") }, actions = { SettingsActionButton(onSettings) })
+                TopAppBar(
+                    title = { Text(stringResource(R.string.chat_title)) },
+                    actions = { SettingsActionButton(onSettings) },
+                )
             }
         },
         bottomBar = {
@@ -122,7 +132,7 @@ internal fun ChatScreen(
         floatingActionButton = {
             if (thread == null) {
                 FloatingActionButton(onClick = { onAction(ChatAction.StartNewChat) }) {
-                    Icon(Icons.Filled.Add, contentDescription = "New message")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.chat_new_message))
                 }
             }
         },
@@ -150,21 +160,21 @@ private fun ConversationList(
     when (list) {
         ListState.Loading -> CenteredContent {
             CircularProgressIndicator()
-            Text("Loading conversations…", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.chat_loading), style = MaterialTheme.typography.bodyLarge)
         }
 
         is ListState.Error -> CenteredContent {
             Text(
-                list.message,
+                list.message.asString(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.error,
             )
-            Button(onClick = { onAction(ChatAction.RetryList) }) { Text("Retry") }
+            Button(onClick = { onAction(ChatAction.RetryList) }) { Text(stringResource(R.string.chat_retry)) }
         }
 
         is ListState.Loaded ->
             if (list.conversations.isEmpty()) {
-                CenteredMessage("No conversations yet. Tap + to message someone.")
+                CenteredMessage(stringResource(R.string.chat_empty))
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(list.conversations, key = { it.username }) { conversation ->
@@ -239,7 +249,7 @@ private fun ThreadContent(thread: ThreadState, onAction: (ChatAction) -> Unit) {
         return
     }
     if (thread.messages.isEmpty()) {
-        CenteredMessage("No messages yet. Say hello to ${thread.username}.")
+        CenteredMessage(stringResource(R.string.chat_thread_empty, thread.username))
         return
     }
     val listState = rememberLazyListState()
@@ -264,9 +274,14 @@ private fun ThreadContent(thread: ThreadState, onAction: (ChatAction) -> Unit) {
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // No stable key: slskd reuses id 0 for outgoing messages, so ids aren't unique.
-        items(thread.messages) { message ->
-            val sender = if (message.isOutgoing) "You" else message.username
+        // slskd reuses id 0 for outgoing messages, so ids alone aren't unique. The thread is
+        // append-only and re-fetched wholesale every 2s, so position + content identifies a
+        // message well enough to stop every visible card recomposing on each poll.
+        itemsIndexed(
+            items = thread.messages,
+            key = { index, message -> "$index ${message.timestampMillis} ${message.id}" },
+        ) { _, message ->
+            val sender = if (message.isOutgoing) stringResource(R.string.chat_sender_self) else message.username
             MessageCard(
                 message = message,
                 sender = sender,
@@ -292,10 +307,29 @@ private fun MessageCard(message: PrivateMessage, sender: String, onReply: () -> 
         if (outgoing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
     val contentColor =
         if (outgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    // Lower-emphasis colour for the timestamp. Incoming cards sit on a surface container, so the
+    // paired variant role applies; outgoing cards sit on primaryContainer, which has no "variant"
+    // partner — there the smaller type scale carries the de-emphasis instead of a colour change.
+    // (Previously both used contentColor.copy(alpha = 0.7f), which has no contrast guarantee.)
+    val timestampColor =
+        if (outgoing) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val replyLabel = stringResource(R.string.chat_reply_to, sender)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = {}, onLongClick = onReply),
+            .combinedClickable(
+                // Tapping a message does nothing; the card is clickable only to host the
+                // long-press ripple. onLongClickLabel is what TalkBack announces for the gesture.
+                onClick = {},
+                onLongClick = onReply,
+                onLongClickLabel = replyLabel,
+            )
+            .semantics {
+                // Don't advertise a tap action that does nothing, and surface the long-press as a
+                // named action in TalkBack's actions menu rather than an unlabelled gesture.
+                onClick(action = null)
+                customActions = listOf(CustomAccessibilityAction(replyLabel) { onReply(); true })
+            },
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
     ) {
@@ -315,7 +349,7 @@ private fun MessageCard(message: PrivateMessage, sender: String, onReply: () -> 
                     Text(
                         formatTime(millis),
                         style = MaterialTheme.typography.labelSmall,
-                        color = contentColor.copy(alpha = 0.7f),
+                        color = timestampColor,
                     )
                 }
             }
@@ -340,7 +374,7 @@ private fun MessageInputBar(
             OutlinedTextField(
                 value = draft,
                 onValueChange = onDraftChange,
-                placeholder = { Text("Message") },
+                placeholder = { Text(stringResource(R.string.chat_message_placeholder)) },
                 modifier = Modifier.weight(1f),
                 maxLines = 4,
             )
@@ -352,7 +386,7 @@ private fun MessageInputBar(
                 } else {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
+                        contentDescription = stringResource(R.string.chat_send),
                         tint = if (canSend) {
                             MaterialTheme.colorScheme.primary
                         } else {
@@ -370,13 +404,13 @@ private fun NewMessageDialog(composer: ComposerState, onAction: (ChatAction) -> 
     AlertDialog(
         onDismissRequest = { if (!composer.sending) onAction(ChatAction.ComposerDismiss) },
         icon = { Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null) },
-        title = { Text("New message") },
+        title = { Text(stringResource(R.string.chat_new_message)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = composer.username,
                     onValueChange = { onAction(ChatAction.ComposerUsernameChanged(it)) },
-                    label = { Text("Username") },
+                    label = { Text(stringResource(R.string.chat_username_label)) },
                     singleLine = true,
                     readOnly = composer.usernameLocked,
                     enabled = !composer.usernameLocked,
@@ -386,13 +420,17 @@ private fun NewMessageDialog(composer: ComposerState, onAction: (ChatAction) -> 
                 OutlinedTextField(
                     value = composer.message,
                     onValueChange = { onAction(ChatAction.ComposerMessageChanged(it)) },
-                    label = { Text("Message") },
+                    label = { Text(stringResource(R.string.chat_message_label)) },
                     minLines = 2,
                     maxLines = 5,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 composer.error?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    Text(
+                        it.asString(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
             }
         },
@@ -404,7 +442,7 @@ private fun NewMessageDialog(composer: ComposerState, onAction: (ChatAction) -> 
                 if (composer.sending) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("Send")
+                    Text(stringResource(R.string.chat_send))
                 }
             }
         },
@@ -412,7 +450,7 @@ private fun NewMessageDialog(composer: ComposerState, onAction: (ChatAction) -> 
             TextButton(
                 onClick = { onAction(ChatAction.ComposerDismiss) },
                 enabled = !composer.sending,
-            ) { Text("Cancel") }
+            ) { Text(stringResource(R.string.chat_cancel)) }
         },
     )
 }

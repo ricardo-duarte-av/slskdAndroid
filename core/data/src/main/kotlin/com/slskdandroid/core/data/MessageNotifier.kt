@@ -1,14 +1,18 @@
 package com.slskdandroid.core.data
 
+import android.Manifest
 import android.app.PendingIntent
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.slskdandroid.core.common.IoDispatcher
 import com.slskdandroid.core.network.SlskdApi
@@ -177,13 +181,22 @@ class MessageNotifier @Inject constructor(
 
     private fun post(tag: String, id: Int, configure: NotificationCompat.Builder.() -> Unit) {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSmallIcon(R.drawable.ic_stat_message)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(launchIntent())
             .apply(configure)
             .build()
-        // No-ops silently if POST_NOTIFICATIONS isn't granted (requested from the UI).
+        // Bail out silently if POST_NOTIFICATIONS isn't granted (it's requested from the UI).
+        // The check is explicit rather than relying on notify() quietly doing nothing, so the
+        // permission requirement is visible here and to lint.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.d(TAG, "POST_NOTIFICATIONS not granted — dropping notification for $tag")
+            return
+        }
         runCatching { notificationManager.notify(tag, id, notification) }
     }
 

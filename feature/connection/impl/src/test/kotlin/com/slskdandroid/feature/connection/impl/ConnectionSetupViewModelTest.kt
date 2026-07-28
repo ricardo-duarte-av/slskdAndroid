@@ -9,6 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import com.slskdandroid.core.designsystem.component.UiText
 import org.junit.Test
 import java.io.IOException
 
@@ -32,7 +33,7 @@ class ConnectionSetupViewModelTest {
         viewModel.onAction(ConnectionSetupAction.BaseUrlChanged("http://host"))
         viewModel.onAction(ConnectionSetupAction.ApiKeyChanged("key"))
         viewModel.onAction(ConnectionSetupAction.Submit)
-        assertEquals("boom", viewModel.uiState.value.errorMessage)
+        assertEquals(UiText.Raw("boom"), viewModel.uiState.value.errorMessage)
 
         viewModel.onAction(ConnectionSetupAction.BaseUrlChanged("http://other"))
 
@@ -81,7 +82,7 @@ class ConnectionSetupViewModelTest {
         viewModel.onAction(ConnectionSetupAction.Submit)
 
         val state = viewModel.uiState.value
-        assertEquals("Authentication failed", state.errorMessage)
+        assertEquals(UiText.Raw("Authentication failed"), state.errorMessage)
         assertFalse(state.isVerifying)
     }
 }

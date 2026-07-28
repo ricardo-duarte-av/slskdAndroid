@@ -47,6 +47,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -54,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.model.Download
 import com.slskdandroid.core.designsystem.component.DepthCard
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.designsystem.component.TransferItem
 import com.slskdandroid.core.designsystem.component.TransferPhase
 import com.slskdandroid.core.designsystem.component.TransferStatusLine
@@ -104,7 +110,10 @@ internal fun DownloadsScreen(
                     onRemove = { onAction(DownloadsAction.RemoveSelected) },
                 )
             } else {
-                TopAppBar(title = { Text("Downloads") }, actions = { SettingsActionButton(onSettings) })
+                TopAppBar(
+                    title = { Text(stringResource(R.string.downloads_title)) },
+                    actions = { SettingsActionButton(onSettings) },
+                )
             }
         },
     ) { padding ->
@@ -114,14 +123,14 @@ internal fun DownloadsScreen(
             }
 
             when (uiState.loadState) {
-                LoadState.Loading -> CenteredMessage("Loading downloads…")
+                LoadState.Loading -> CenteredMessage(stringResource(R.string.downloads_loading))
 
                 is LoadState.Error ->
-                    CenteredMessage(uiState.loadState.message, MaterialTheme.colorScheme.error)
+                    CenteredMessage(uiState.loadState.message.asString(), MaterialTheme.colorScheme.error)
 
                 LoadState.Loaded ->
                     if (uiState.users.isEmpty()) {
-                        CenteredMessage("No downloads yet. Queue files from Search.")
+                        CenteredMessage(stringResource(R.string.downloads_empty))
                     } else {
                         DownloadsList(uiState, onAction, onBrowseUser, onUserInfo, onChatUser)
                     }
@@ -141,13 +150,13 @@ private fun SelectionTopBar(
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onClear) {
-                Icon(Icons.Filled.Close, contentDescription = "Clear selection")
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.downloads_clear_selection))
             }
         },
-        title = { Text("$count selected") },
+        title = { Text(stringResource(R.string.downloads_selected_count, count)) },
         actions = {
-            TextButton(onClick = onCancel) { Text("Cancel") }
-            TextButton(onClick = onRemove) { Text("Remove") }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.downloads_cancel)) }
+            TextButton(onClick = onRemove) { Text(stringResource(R.string.downloads_remove)) }
         },
     )
 }
@@ -161,32 +170,32 @@ private fun BulkActionBar(onAction: (DownloadsAction) -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         MenuButton(
-            label = "Retry",
+            label = stringResource(R.string.downloads_bulk_retry),
             options = listOf(
-                "Errored" to RetryFilter.Errored,
-                "Cancelled" to RetryFilter.Cancelled,
-                "All" to RetryFilter.All,
+                stringResource(R.string.downloads_filter_errored) to RetryFilter.Errored,
+                stringResource(R.string.downloads_filter_cancelled) to RetryFilter.Cancelled,
+                stringResource(R.string.downloads_filter_all) to RetryFilter.All,
             ),
             onSelect = { onAction(DownloadsAction.BulkRetry(it)) },
             modifier = Modifier.weight(1f),
         )
         MenuButton(
-            label = "Cancel",
+            label = stringResource(R.string.downloads_cancel),
             options = listOf(
-                "All" to CancelFilter.All,
-                "Queued" to CancelFilter.Queued,
-                "In progress" to CancelFilter.InProgress,
+                stringResource(R.string.downloads_filter_all) to CancelFilter.All,
+                stringResource(R.string.downloads_filter_queued) to CancelFilter.Queued,
+                stringResource(R.string.downloads_filter_in_progress) to CancelFilter.InProgress,
             ),
             onSelect = { onAction(DownloadsAction.BulkCancel(it)) },
             modifier = Modifier.weight(1f),
         )
         MenuButton(
-            label = "Remove",
+            label = stringResource(R.string.downloads_remove),
             options = listOf(
-                "Succeeded" to RemoveFilter.Succeeded,
-                "Errored" to RemoveFilter.Errored,
-                "Cancelled" to RemoveFilter.Cancelled,
-                "All completed" to RemoveFilter.Completed,
+                stringResource(R.string.downloads_filter_succeeded) to RemoveFilter.Succeeded,
+                stringResource(R.string.downloads_filter_errored) to RemoveFilter.Errored,
+                stringResource(R.string.downloads_filter_cancelled) to RemoveFilter.Cancelled,
+                stringResource(R.string.downloads_filter_all_completed) to RemoveFilter.Completed,
             ),
             onSelect = { onAction(DownloadsAction.BulkRemove(it)) },
             modifier = Modifier.weight(1f),
@@ -385,12 +394,19 @@ private fun PeerHeader(
             } else {
                 Icons.Filled.KeyboardArrowUp
             },
-            contentDescription = if (collapsed) "Expand $username" else "Collapse $username",
+            contentDescription = stringResource(
+                if (collapsed) R.string.downloads_expand_user else R.string.downloads_collapse_user,
+                username,
+            ),
             tint = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.width(4.dp))
         Text(
-            "$username · $fileCount files",
+            stringResource(
+                R.string.downloads_peer_summary,
+                username,
+                pluralStringResource(R.plurals.downloads_peer_files, fileCount, fileCount),
+            ),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.weight(1f),
@@ -410,25 +426,28 @@ private fun PeerOverflowMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
+            Icon(
+                Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.downloads_more_actions_for, username),
+            )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("Info") },
+                text = { Text(stringResource(R.string.downloads_info)) },
                 onClick = {
                     expanded = false
                     onUserInfo(username)
                 },
             )
             DropdownMenuItem(
-                text = { Text("Browse user") },
+                text = { Text(stringResource(R.string.downloads_browse_user)) },
                 onClick = {
                     expanded = false
                     onBrowseUser(username)
                 },
             )
             DropdownMenuItem(
-                text = { Text("Chat") },
+                text = { Text(stringResource(R.string.downloads_chat)) },
                 onClick = {
                     expanded = false
                     onChatUser(username)
@@ -458,7 +477,9 @@ private fun DirectoryHeader(
             } else {
                 Icons.Filled.KeyboardArrowUp
             },
-            contentDescription = if (collapsed) "Expand directory" else "Collapse directory",
+            contentDescription = stringResource(
+                if (collapsed) R.string.downloads_expand_directory else R.string.downloads_collapse_directory,
+            ),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
@@ -486,6 +507,7 @@ private fun DownloadRow(
     onAction: (DownloadsAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectLabel = stringResource(R.string.downloads_select_transfer)
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -493,8 +515,19 @@ private fun DownloadRow(
                 onClick = {
                     if (inSelectionMode) onAction(DownloadsAction.ToggleSelection(download.id))
                 },
+                onClickLabel = if (inSelectionMode) stringResource(R.string.downloads_toggle_selection) else null,
                 onLongClick = { onAction(DownloadsAction.StartSelection(download.id)) },
+                onLongClickLabel = selectLabel,
             )
+            // Selection mode is otherwise only reachable by long-press; name it as an action so
+            // TalkBack can offer it from the actions menu.
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction(selectLabel) {
+                        onAction(DownloadsAction.StartSelection(download.id)); true
+                    },
+                )
+            }
             .padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -551,22 +584,38 @@ private fun DownloadState.toTransferPhase(): TransferPhase = when (this) {
     DownloadState.Unknown -> TransferPhase.Unknown
 }
 
-/** A compact, state-appropriate one-liner: state label + size/progress/speed/queue position. */
+/**
+ * A compact, state-appropriate one-liner: state label + size/progress/speed/queue position.
+ * Composable so each state's phrasing is a localized resource; the byte sizes it interpolates are
+ * pre-formatted by [formatBytes] (unit symbols KB/MB/GB/TB are not translated).
+ */
+@Composable
 private fun Download.statusLine(): String = when (state) {
-    DownloadState.InProgress -> {
-        val speed = if (averageSpeed > 0) " · ${formatBytes(averageSpeed.toLong())}/s" else ""
-        "${formatBytes(bytesTransferred)} / ${formatBytes(sizeBytes)}$speed"
-    }
+    DownloadState.InProgress ->
+        if (averageSpeed > 0) {
+            stringResource(
+                R.string.downloads_status_in_progress_speed,
+                formatBytes(bytesTransferred),
+                formatBytes(sizeBytes),
+                formatBytes(averageSpeed.toLong()),
+            )
+        } else {
+            stringResource(
+                R.string.downloads_status_in_progress,
+                formatBytes(bytesTransferred),
+                formatBytes(sizeBytes),
+            )
+        }
 
-    DownloadState.Queued ->
-        placeInQueue?.let { "Queued · #$it" } ?: "Queued · ${formatBytes(sizeBytes)}"
+    DownloadState.Queued -> placeInQueue
+        ?.let { stringResource(R.string.downloads_status_queued_position, it) }
+        ?: stringResource(R.string.downloads_status_queued, formatBytes(sizeBytes))
 
-    DownloadState.Completed -> "Done · ${formatBytes(sizeBytes)}"
+    DownloadState.Completed -> stringResource(R.string.downloads_status_done, formatBytes(sizeBytes))
 
-    DownloadState.Failed -> {
-        val reason = exception?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
-        "Failed · ${formatBytes(sizeBytes)}$reason"
-    }
+    DownloadState.Failed -> exception?.takeIf { it.isNotBlank() }
+        ?.let { stringResource(R.string.downloads_status_failed_reason, formatBytes(sizeBytes), it) }
+        ?: stringResource(R.string.downloads_status_failed, formatBytes(sizeBytes))
 
     DownloadState.Unknown -> formatBytes(sizeBytes)
 }
@@ -582,3 +631,6 @@ private fun formatBytes(bytes: Long): String {
     }
     return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
 }
+
+/** Announced by TalkBack for the long-press that enters multi-select. */
+

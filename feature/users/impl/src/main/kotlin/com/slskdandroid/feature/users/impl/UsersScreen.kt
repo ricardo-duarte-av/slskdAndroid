@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.UserPresence
 import com.slskdandroid.core.model.UserProfile
 
@@ -96,16 +98,19 @@ internal fun UsersScreen(
 
                 is UsersUiState.Loading -> CenteredContent {
                     CircularProgressIndicator()
-                    Text("Loading ${uiState.username}…", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stringResource(R.string.users_loading, uiState.username),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                 }
 
                 is UsersUiState.Error -> CenteredContent {
                     Text(
-                        uiState.message,
+                        uiState.message.asString(),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.error,
                     )
-                    Button(onClick = { onAction(UsersAction.Retry) }) { Text("Retry") }
+                    Button(onClick = { onAction(UsersAction.Retry) }) { Text(stringResource(R.string.users_retry)) }
                 }
 
                 is UsersUiState.Loaded -> UserProfileContent(
@@ -122,7 +127,7 @@ internal fun UsersScreen(
 @Composable
 private fun UsersTopBar(uiState: UsersUiState, onAction: (UsersAction) -> Unit, onSettings: () -> Unit) {
     val title = when (uiState) {
-        is UsersUiState.Idle -> "Users"
+        is UsersUiState.Idle -> stringResource(R.string.users_title)
         is UsersUiState.Loading -> uiState.username
         is UsersUiState.Error -> uiState.username
         is UsersUiState.Loaded -> uiState.profile.username
@@ -132,7 +137,7 @@ private fun UsersTopBar(uiState: UsersUiState, onAction: (UsersAction) -> Unit, 
         actions = {
             if (uiState !is UsersUiState.Idle) {
                 IconButton(onClick = { onAction(UsersAction.Close) }) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close user")
+                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.users_close))
                 }
             } else {
                 SettingsActionButton(onSettings)
@@ -147,18 +152,18 @@ private fun IdlePrompt(query: String, onAction: (UsersAction) -> Unit) {
         OutlinedTextField(
             value = query,
             onValueChange = { onAction(UsersAction.QueryChanged(it)) },
-            label = { Text("Username") },
+            label = { Text(stringResource(R.string.users_username_label)) },
             singleLine = true,
             trailingIcon = {
                 IconButton(onClick = { onAction(UsersAction.Submit) }) {
-                    Icon(Icons.Filled.Person, contentDescription = "Look up user")
+                    Icon(Icons.Filled.Person, contentDescription = stringResource(R.string.users_lookup))
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onAction(UsersAction.Submit) }),
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         )
-        CenteredMessage("Enter a username to see their profile.")
+        CenteredMessage(stringResource(R.string.users_empty))
     }
 }
 
@@ -183,13 +188,13 @@ private fun UserProfileContent(
         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text(
-                    "About",
+                    stringResource(R.string.users_about),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    profile.description ?: "No user info.",
+                    profile.description ?: stringResource(R.string.users_no_info),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (profile.description == null) {
                         MaterialTheme.colorScheme.onSurfaceVariant
@@ -204,12 +209,12 @@ private fun UserProfileContent(
             Button(onClick = onBrowse, modifier = Modifier.weight(1f)) {
                 Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Browse")
+                Text(stringResource(R.string.users_browse))
             }
             OutlinedButton(onClick = onChat, modifier = Modifier.weight(1f)) {
                 Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Chat")
+                Text(stringResource(R.string.users_chat))
             }
         }
     }
@@ -245,7 +250,7 @@ private fun ProfilePicture(base64: String?) {
         if (bitmap != null) {
             Image(
                 bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Profile picture",
+                contentDescription = stringResource(R.string.users_profile_picture),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -270,10 +275,10 @@ private fun ProfilePicture(base64: String?) {
 @Composable
 private fun PresenceLabel(presence: UserPresence, isPrivileged: Boolean) {
     val (text, color) = when (presence) {
-        UserPresence.Online -> "Online" to MaterialTheme.colorScheme.primary
-        UserPresence.Away -> "Away" to MaterialTheme.colorScheme.tertiary
-        UserPresence.Offline -> "Offline" to MaterialTheme.colorScheme.onSurfaceVariant
-        UserPresence.Unknown -> "Status unknown" to MaterialTheme.colorScheme.onSurfaceVariant
+        UserPresence.Online -> stringResource(R.string.users_presence_online) to MaterialTheme.colorScheme.primary
+        UserPresence.Away -> stringResource(R.string.users_presence_away) to MaterialTheme.colorScheme.tertiary
+        UserPresence.Offline -> stringResource(R.string.users_presence_offline) to MaterialTheme.colorScheme.onSurfaceVariant
+        UserPresence.Unknown -> stringResource(R.string.users_presence_unknown) to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
@@ -284,7 +289,7 @@ private fun PresenceLabel(presence: UserPresence, isPrivileged: Boolean) {
         Text(text, style = MaterialTheme.typography.labelLarge, color = color)
         if (isPrivileged) {
             Text(
-                "  ·  Privileged",
+                stringResource(R.string.users_privileged),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.secondary,
             )
@@ -296,15 +301,18 @@ private fun PresenceLabel(presence: UserPresence, isPrivileged: Boolean) {
 private fun StatsCard(profile: UserProfile) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
-            StatRow("Free upload slot", if (profile.hasFreeUploadSlot) "Yes" else "No")
+            StatRow(
+                stringResource(R.string.users_stat_free_slot),
+                stringResource(if (profile.hasFreeUploadSlot) R.string.users_yes else R.string.users_no),
+            )
             StatDivider()
-            StatRow("Total upload slots", profile.uploadSlots.toString())
+            StatRow(stringResource(R.string.users_stat_total_slots), profile.uploadSlots.toString())
             StatDivider()
-            StatRow("Queue length", profile.queueLength.toString())
+            StatRow(stringResource(R.string.users_stat_queue_length), profile.queueLength.toString())
             StatDivider()
-            StatRow("IP address", profile.ipAddress ?: "Unknown")
+            StatRow(stringResource(R.string.users_stat_ip), profile.ipAddress ?: stringResource(R.string.users_unknown))
             StatDivider()
-            StatRow("Port", profile.port?.toString() ?: "Unknown")
+            StatRow(stringResource(R.string.users_stat_port), profile.port?.toString() ?: stringResource(R.string.users_unknown))
         }
     }
 }

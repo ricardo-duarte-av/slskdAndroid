@@ -36,10 +36,16 @@ internal class DefaultRoomsRepository @Inject constructor(
     }.flowOn(ioDispatcher)
 
     override fun messages(room: String): Flow<List<RoomMessage>> = flow {
+        // A failure (e.g. just-left room) yields an empty list rather than tearing the stream, but
+        // only until we've seen a good snapshot — after that the last one is re-emitted, so a
+        // transient blip can't blank an open room's history for a cycle and then restore it.
+        var lastGood: List<RoomMessage>? = null
         while (currentCoroutineContext().isActive) {
-            // A failure (e.g. just-left room) yields an empty list rather than tearing the stream.
-            val messages = runCatching { api.getRoomMessages(room) }.getOrDefault(emptyList())
-            emit(messages.map(NetworkRoomMessage::toModel))
+            val messages = runCatching { api.getRoomMessages(room) }
+                .map { it.map(NetworkRoomMessage::toModel) }
+                .getOrElse { lastGood ?: emptyList() }
+            lastGood = messages
+            emit(messages)
             delay(MESSAGES_POLL_INTERVAL_MS)
         }
     }.flowOn(ioDispatcher)

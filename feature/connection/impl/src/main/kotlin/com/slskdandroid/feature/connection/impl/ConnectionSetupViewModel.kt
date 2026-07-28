@@ -3,6 +3,7 @@ package com.slskdandroid.feature.connection.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.ConnectionSettingsRepository
+import com.slskdandroid.core.designsystem.component.toUiText
 import com.slskdandroid.core.model.ConnectionSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -54,7 +55,7 @@ class ConnectionSetupViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isVerifying = false,
-                            errorMessage = error.message ?: "Could not connect to slskd",
+                            errorMessage = error.toUiText(R.string.connection_error_fallback),
                         )
                     }
                 }

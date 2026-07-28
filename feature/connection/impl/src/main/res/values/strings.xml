@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="connection_title">Connect to slskd</string>
+    <string name="connection_section_server">Server</string>
+    <string name="connection_intro">Enter the address of your slskd instance and an API key. Both are required — the app authenticates with the API key.</string>
+
+    <string name="connection_base_url_label">Base URL</string>
+    <!-- Example address only; not a real host. Kept translatable so locales can use a
+         region-appropriate example if they prefer. -->
+    <string name="connection_base_url_placeholder">http://192.168.1.10:5030</string>
+    <string name="connection_api_key_label">API key</string>
+
+    <string name="connection_connect">Connect</string>
+    <string name="connection_connecting">Connecting…</string>
+
+    <!-- Shown when the connection attempt failed and slskd gave us no message of its own. -->
+    <string name="connection_error_fallback">Could not connect to slskd</string>
+
+</resources>

@@ -12,7 +12,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.slskdandroid.core.designsystem.R
 import kotlin.math.roundToInt
 
 /** Coarse transfer lifecycle, shared by Downloads and Uploads (which have parallel state enums). */
@@ -77,13 +79,21 @@ fun transferStatusOf(items: List<TransferItem>): TransferStatus {
     )
 }
 
-/** Compact "N complete · M errored · …" over the non-zero terminal buckets. */
+/**
+ * Compact "N complete · M errored · …" over the non-zero terminal buckets.
+ *
+ * Composable because each bucket label is a localized resource; the separator stays in code since
+ * it's punctuation rather than translatable text.
+ */
+@Composable
 private fun TransferStatus.mixedSummary(): String = buildList {
-    if (completed > 0) add("$completed complete")
-    if (queued > 0) add("$queued queued")
-    if (failed > 0) add("$failed errored")
-    if (unknown > 0) add("$unknown unknown")
-}.joinToString(" · ")
+    if (completed > 0) add(stringResource(R.string.ds_transfer_count_complete, completed))
+    if (queued > 0) add(stringResource(R.string.ds_transfer_count_queued, queued))
+    if (failed > 0) add(stringResource(R.string.ds_transfer_count_errored, failed))
+    if (unknown > 0) add(stringResource(R.string.ds_transfer_count_unknown, unknown))
+}.joinToString(SUMMARY_SEPARATOR)
+
+private const val SUMMARY_SEPARATOR = " · "
 
 /**
  * A one-line transfer indicator for a card. If anything is in progress it shows the Material 3
@@ -103,7 +113,7 @@ fun TransferStatusLine(status: TransferStatus, modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                "${(status.progress * 100).roundToInt()}%",
+                stringResource(R.string.ds_transfer_percent, (status.progress * 100).roundToInt()),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -113,10 +123,12 @@ fun TransferStatusLine(status: TransferStatus, modifier: Modifier = Modifier) {
 
     val scheme = MaterialTheme.colorScheme
     val (label, color) = when {
-        status.completed == status.total -> "Complete" to scheme.primary
-        status.queued == status.total -> "Queued" to scheme.tertiary
-        status.failed == status.total -> "Errored" to scheme.error
-        status.unknown == status.total -> "Unknown" to scheme.onSurfaceVariant
+        status.completed == status.total -> stringResource(R.string.ds_transfer_complete) to scheme.primary
+        status.queued == status.total -> stringResource(R.string.ds_transfer_queued) to scheme.tertiary
+        status.failed == status.total -> stringResource(R.string.ds_transfer_errored) to scheme.error
+        status.unknown == status.total ->
+            stringResource(R.string.ds_transfer_unknown) to scheme.onSurfaceVariant
+
         else -> status.mixedSummary() to scheme.onSurfaceVariant
     }
     Text(label, style = MaterialTheme.typography.labelSmall, color = color, modifier = modifier)

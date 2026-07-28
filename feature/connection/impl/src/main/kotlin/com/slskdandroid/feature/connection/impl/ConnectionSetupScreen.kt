@@ -19,12 +19,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SectionHeader
+import com.slskdandroid.core.designsystem.component.asString
 
 @Composable
 internal fun ConnectionSetupRoute(
@@ -50,7 +52,7 @@ internal fun ConnectionSetupScreen(
     onAction: (ConnectionSetupAction) -> Unit,
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Connect to slskd") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.connection_title)) }) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -60,18 +62,17 @@ internal fun ConnectionSetupScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SectionHeader("Server")
+            SectionHeader(stringResource(R.string.connection_section_server))
             Text(
-                "Enter the address of your slskd instance and an API key. " +
-                    "Both are required — the app authenticates with the API key.",
+                stringResource(R.string.connection_intro),
                 style = MaterialTheme.typography.bodyMedium,
             )
 
             OutlinedTextField(
                 value = uiState.baseUrl,
                 onValueChange = { onAction(ConnectionSetupAction.BaseUrlChanged(it)) },
-                label = { Text("Base URL") },
-                placeholder = { Text("http://192.168.1.10:5030") },
+                label = { Text(stringResource(R.string.connection_base_url_label)) },
+                placeholder = { Text(stringResource(R.string.connection_base_url_placeholder)) },
                 singleLine = true,
                 enabled = !uiState.isVerifying,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -81,7 +82,7 @@ internal fun ConnectionSetupScreen(
             OutlinedTextField(
                 value = uiState.apiKey,
                 onValueChange = { onAction(ConnectionSetupAction.ApiKeyChanged(it)) },
-                label = { Text("API key") },
+                label = { Text(stringResource(R.string.connection_api_key_label)) },
                 singleLine = true,
                 enabled = !uiState.isVerifying,
                 visualTransformation = PasswordVisualTransformation(),
@@ -90,7 +91,7 @@ internal fun ConnectionSetupScreen(
             )
 
             uiState.errorMessage?.let { message ->
-                Text(message, color = MaterialTheme.colorScheme.error)
+                Text(message.asString(), color = MaterialTheme.colorScheme.error)
             }
 
             Button(
@@ -100,9 +101,9 @@ internal fun ConnectionSetupScreen(
             ) {
                 if (uiState.isVerifying) {
                     CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-                    Text("Connecting…")
+                    Text(stringResource(R.string.connection_connecting))
                 } else {
-                    Text("Connect")
+                    Text(stringResource(R.string.connection_connect))
                 }
             }
         }

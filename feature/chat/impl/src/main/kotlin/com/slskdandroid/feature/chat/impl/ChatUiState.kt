@@ -1,5 +1,7 @@
 package com.slskdandroid.feature.chat.impl
 
+import com.slskdandroid.core.designsystem.component.UiText
+
 import com.slskdandroid.core.model.Conversation
 import com.slskdandroid.core.model.PrivateMessage
 
@@ -18,7 +20,7 @@ data class ChatUiState(
 
 sealed interface ListState {
     data object Loading : ListState
-    data class Error(val message: String) : ListState
+    data class Error(val message: UiText) : ListState
     data class Loaded(val conversations: List<Conversation>) : ListState
 }
 
@@ -40,7 +42,7 @@ data class ComposerState(
     val message: String = "",
     val usernameLocked: Boolean = false,
     val sending: Boolean = false,
-    val error: String? = null,
+    val error: UiText? = null,
 )
 
 sealed interface ChatAction {

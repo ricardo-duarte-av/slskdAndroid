@@ -5,6 +5,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.slskdandroid.core.designsystem.R
 
 /**
  * The shared "open Settings" action for top-level screens' app bars. Drop into a `TopAppBar`'s
@@ -13,6 +15,6 @@ import androidx.compose.runtime.Composable
 @Composable
 fun SettingsActionButton(onClick: () -> Unit) {
     IconButton(onClick = onClick) {
-        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.ds_settings))
     }
 }

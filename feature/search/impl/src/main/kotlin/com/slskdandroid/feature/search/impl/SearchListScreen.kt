@@ -29,6 +29,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.Search
 
 @Composable
@@ -67,20 +70,25 @@ internal fun SearchListScreen(
     onSettings: () -> Unit,
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Search") }, actions = { SettingsActionButton(onSettings) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.search_title)) },
+                actions = { SettingsActionButton(onSettings) },
+            )
+        },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             OutlinedTextField(
                 value = uiState.query,
                 onValueChange = { onAction(SearchListAction.QueryChanged(it)) },
-                label = { Text("What are you looking for?") },
+                label = { Text(stringResource(R.string.search_query_label)) },
                 singleLine = true,
                 trailingIcon = {
                     if (uiState.starting) {
                         CircularProgressIndicator(modifier = Modifier.padding(12.dp))
                     } else {
                         IconButton(onClick = { onAction(SearchListAction.Submit) }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Search")
+                            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.search_action))
                         }
                     }
                 },
@@ -96,14 +104,14 @@ internal fun SearchListScreen(
             )
 
             when (val state = uiState.searches) {
-                SearchesState.Loading -> CenteredMessage("Loading searches…")
+                SearchesState.Loading -> CenteredMessage(stringResource(R.string.search_loading))
 
                 is SearchesState.Error ->
-                    CenteredMessage(state.message, MaterialTheme.colorScheme.error)
+                    CenteredMessage(state.message.asString(), MaterialTheme.colorScheme.error)
 
                 is SearchesState.Loaded ->
                     if (state.searches.isEmpty()) {
-                        CenteredMessage("No searches yet. Start one above.")
+                        CenteredMessage(stringResource(R.string.search_empty))
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
@@ -163,7 +171,7 @@ private fun SearchRow(
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = "Delete search",
+                contentDescription = stringResource(R.string.search_delete),
                 tint = MaterialTheme.colorScheme.error,
             )
         }
@@ -184,13 +192,25 @@ private fun CenteredMessage(
 }
 
 /** Friendly status: the raw slskd flags string while complete, or a live label otherwise. */
-private fun statusLabel(search: Search): String =
-    if (!search.isComplete) "Searching…" else search.state.ifBlank { "Completed" }
-
-private fun metaLine(search: Search): String = buildString {
-    append("${search.fileCount} files")
-    if (search.lockedFileCount > 0) append(" · ${search.lockedFileCount} locked")
-    append(" · ${search.responseCount} responses")
-    val time = formatTimestamp(search.endedAt)
-    if (time.isNotEmpty()) append(" · $time")
+@Composable
+private fun statusLabel(search: Search): String = when {
+    !search.isComplete -> stringResource(R.string.search_status_searching)
+    // slskd's own state string passes through untranslated; only our fallback is localized.
+    else -> search.state.ifBlank { stringResource(R.string.search_status_completed) }
 }
+
+@Composable
+private fun metaLine(search: Search): String = buildList {
+    add(pluralStringResource(R.plurals.search_meta_files, search.fileCount, search.fileCount))
+    if (search.lockedFileCount > 0) {
+        add(stringResource(R.string.search_meta_locked, search.lockedFileCount))
+    }
+    add(
+        pluralStringResource(
+            R.plurals.search_meta_responses,
+            search.responseCount,
+            search.responseCount,
+        ),
+    )
+    formatTimestamp(search.endedAt).takeIf { it.isNotEmpty() }?.let(::add)
+}.joinToString(" · ")

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="browse_title">Browse</string>
+    <string name="browse_username_label">Username</string>
+    <string name="browse_action">Browse</string>
+    <string name="browse_close_user">Close user</string>
+    <string name="browse_back_to_folders">Back to folders</string>
+    <string name="browse_empty">Enter a username to browse their shared files.</string>
+
+    <string name="browse_loading">Browsing %1$s…</string>
+    <string name="browse_loading_percent">Browsing %1$s… %2$d%%</string>
+    <string name="browse_load_failed">Couldn\'t browse %1$s</string>
+
+    <string name="browse_filter_folders">Filter folders</string>
+    <string name="browse_filter_files">Filter files</string>
+    <string name="browse_clear_filter">Clear filter</string>
+    <string name="browse_no_folders_match">No folders match “%1$s”.</string>
+    <string name="browse_no_files_match">No files match “%1$s”.</string>
+
+    <string name="browse_expand">Expand</string>
+    <string name="browse_collapse">Collapse</string>
+    <string name="browse_locked">Locked</string>
+    <string name="browse_download">Download</string>
+    <string name="browse_clear">Clear</string>
+    <string name="browse_download_selected">Download selected</string>
+
+</resources>

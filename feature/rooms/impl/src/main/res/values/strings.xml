@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="rooms_title">Rooms</string>
+    <string name="rooms_back">Back</string>
+    <string name="rooms_find">Find rooms</string>
+    <string name="rooms_loading">Loading rooms…</string>
+    <string name="rooms_retry">Retry</string>
+    <string name="rooms_empty">You haven\'t joined any rooms. Tap search to find some.</string>
+    <string name="rooms_load_failed">Couldn\'t load rooms.</string>
+
+    <string name="rooms_show_members">Show members</string>
+    <string name="rooms_more">More</string>
+    <string name="rooms_more_actions_for">More actions for %1$s</string>
+    <string name="rooms_leave">Leave room</string>
+
+    <string name="rooms_no_messages">No messages yet. Be the first to say something.</string>
+    <!-- Accessibility label for the long-press that seeds a reply. -->
+    <string name="rooms_reply_to">Reply to %1$s</string>
+
+    <string name="rooms_members">Members</string>
+    <string name="rooms_members_count">Members · %1$d</string>
+    <string name="rooms_no_members">No members.</string>
+
+    <string name="rooms_filter">Filter rooms</string>
+    <string name="rooms_none_match">No rooms match.</string>
+    <string name="rooms_private">Private</string>
+    <string name="rooms_join">Join</string>
+
+    <string name="rooms_message_placeholder">Message</string>
+    <string name="rooms_send">Send</string>
+
+    <plurals name="rooms_user_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <plurals name="rooms_room_users">
+        <item quantity="one">%1$d user</item>
+        <item quantity="other">%1$d users</item>
+    </plurals>
+
+</resources>

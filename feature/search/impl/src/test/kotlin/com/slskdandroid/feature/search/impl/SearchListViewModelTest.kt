@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import com.slskdandroid.core.designsystem.component.UiText
 import org.junit.Test
 
 /**
@@ -101,7 +102,7 @@ class SearchListViewModelTest {
 
         viewModel.uiState.test {
             val errored = awaitItemWhere { it.searches is SearchesState.Error }
-            assertEquals("network down", (errored.searches as SearchesState.Error).message)
+            assertEquals(UiText.Raw("network down"), (errored.searches as SearchesState.Error).message)
             cancelAndIgnoreRemainingEvents()
         }
     }

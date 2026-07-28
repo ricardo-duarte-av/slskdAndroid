@@ -1,5 +1,7 @@
 package com.slskdandroid.feature.rooms.impl
 
+import com.slskdandroid.core.designsystem.component.UiText
+
 import com.slskdandroid.core.model.AvailableRoom
 import com.slskdandroid.core.model.RoomMessage
 import com.slskdandroid.core.model.RoomUser
@@ -17,7 +19,7 @@ data class RoomsUiState(
 
 sealed interface ListState {
     data object Loading : ListState
-    data class Error(val message: String) : ListState
+    data class Error(val message: UiText) : ListState
     data class Loaded(val rooms: List<String>) : ListState
 }
 
@@ -44,7 +46,7 @@ data class SearchState(
 
 sealed interface SearchPhase {
     data object Loading : SearchPhase
-    data class Error(val message: String) : SearchPhase
+    data class Error(val message: UiText) : SearchPhase
     data class Loaded(val rooms: List<AvailableRoom>) : SearchPhase
 }
 

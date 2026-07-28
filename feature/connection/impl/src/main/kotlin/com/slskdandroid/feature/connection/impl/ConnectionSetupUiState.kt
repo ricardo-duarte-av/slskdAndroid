@@ -1,11 +1,13 @@
 package com.slskdandroid.feature.connection.impl
 
+import com.slskdandroid.core.designsystem.component.UiText
+
 /** Form + submission state for the connection-setup screen. */
 data class ConnectionSetupUiState(
     val baseUrl: String = "",
     val apiKey: String = "",
     val isVerifying: Boolean = false,
-    val errorMessage: String? = null,
+    val errorMessage: UiText? = null,
 ) {
     val canSubmit: Boolean
         get() = baseUrl.isNotBlank() && apiKey.isNotBlank() && !isVerifying

@@ -1,5 +1,7 @@
 package com.slskdandroid.feature.users.impl
 
+import com.slskdandroid.core.designsystem.component.UiText
+
 import com.slskdandroid.core.model.UserProfile
 
 sealed interface UsersUiState {
@@ -8,7 +10,7 @@ sealed interface UsersUiState {
 
     data class Loading(val username: String) : UsersUiState
 
-    data class Error(val username: String, val message: String) : UsersUiState
+    data class Error(val username: String, val message: UiText) : UsersUiState
 
     data class Loaded(val profile: UserProfile) : UsersUiState
 }

@@ -7,9 +7,11 @@ import com.slskdandroid.core.model.UploadState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
+import com.slskdandroid.core.designsystem.component.UiText
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -23,7 +25,7 @@ class UploadsViewModelTest {
     @Test
     fun `groups uploads by user`() = runTest {
         repository.uploadsFlow = flowOf(listOf(upload("1", "alice"), upload("2", "bob")))
-        val viewModel = UploadsViewModel(repository)
+        val viewModel = UploadsViewModel(repository, UnconfinedTestDispatcher(testScheduler))
 
         viewModel.uiState.test {
             val loaded = awaitItemWhere { it.loadState is LoadState.Loaded }
@@ -35,11 +37,11 @@ class UploadsViewModelTest {
     @Test
     fun `a failing stream maps to an error state`() = runTest {
         repository.uploadsFlow = flow { throw RuntimeException("offline") }
-        val viewModel = UploadsViewModel(repository)
+        val viewModel = UploadsViewModel(repository, UnconfinedTestDispatcher(testScheduler))
 
         viewModel.uiState.test {
             val errored = awaitItemWhere { it.loadState is LoadState.Error }
-            assertEquals("offline", (errored.loadState as LoadState.Error).message)
+            assertEquals(UiText.Raw("offline"), (errored.loadState as LoadState.Error).message)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -47,7 +49,7 @@ class UploadsViewModelTest {
     @Test
     fun `removing the selection cancels-and-removes each selected transfer`() = runTest {
         repository.uploadsFlow = flowOf(listOf(upload("1", "alice"), upload("2", "bob")))
-        val viewModel = UploadsViewModel(repository)
+        val viewModel = UploadsViewModel(repository, UnconfinedTestDispatcher(testScheduler))
 
         viewModel.uiState.test {
             awaitItemWhere { it.loadState is LoadState.Loaded }

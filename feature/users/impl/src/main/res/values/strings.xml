@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="users_title">Users</string>
+    <string name="users_username_label">Username</string>
+    <string name="users_lookup">Look up user</string>
+    <string name="users_close">Close user</string>
+    <string name="users_empty">Enter a username to see their profile.</string>
+    <string name="users_loading">Loading %1$s…</string>
+    <string name="users_retry">Retry</string>
+    <string name="users_load_failed">Couldn\'t load %1$s. They may be offline.</string>
+
+    <string name="users_about">About</string>
+    <string name="users_no_info">No user info.</string>
+    <string name="users_profile_picture">Profile picture</string>
+    <string name="users_browse">Browse</string>
+    <string name="users_chat">Chat</string>
+
+    <string name="users_presence_online">Online</string>
+    <string name="users_presence_away">Away</string>
+    <string name="users_presence_offline">Offline</string>
+    <string name="users_presence_unknown">Status unknown</string>
+    <string name="users_privileged">"  ·  Privileged"</string>
+
+    <string name="users_stat_free_slot">Free upload slot</string>
+    <string name="users_stat_total_slots">Total upload slots</string>
+    <string name="users_stat_queue_length">Queue length</string>
+    <string name="users_stat_ip">IP address</string>
+    <string name="users_stat_port">Port</string>
+    <string name="users_yes">Yes</string>
+    <string name="users_no">No</string>
+    <string name="users_unknown">Unknown</string>
+
+</resources>

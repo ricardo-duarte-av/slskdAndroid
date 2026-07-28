@@ -10,6 +10,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.slskdandroid.R
 import com.slskdandroid.core.data.MessageNotifier
 import com.slskdandroid.core.data.SettingsRepository
 import dagger.hilt.android.AndroidEntryPoint
@@ -73,9 +74,9 @@ class NotificationService : Service() {
     private fun startAsForeground() {
         ensureChannel()
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
-            .setContentTitle("slskd")
-            .setContentText("Watching for new messages")
+            .setSmallIcon(R.drawable.ic_stat_watching)
+            .setContentTitle(getString(R.string.service_notification_title))
+            .setContentText(getString(R.string.service_notification_text))
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(
@@ -99,8 +100,8 @@ class NotificationService : Service() {
 
     private fun ensureChannel() {
         val channel = NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
-            .setName("Message watch")
-            .setDescription("Keeps checking slskd for new messages")
+            .setName(getString(R.string.service_channel_name))
+            .setDescription(getString(R.string.service_channel_description))
             .build()
         NotificationManagerCompat.from(this).createNotificationChannel(channel)
     }

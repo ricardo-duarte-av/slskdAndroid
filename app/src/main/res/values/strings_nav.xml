@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Top-level navigation destinations. The nav suite renders icons only, so these are the
+         accessibility labels that name each section. -->
+    <string name="nav_search">Search</string>
+    <string name="nav_downloads">Downloads</string>
+    <string name="nav_uploads">Uploads</string>
+    <string name="nav_rooms">Rooms</string>
+    <string name="nav_chat">Chat</string>
+    <string name="nav_users">Users</string>
+    <string name="nav_browse">Browse</string>
+
+    <!-- Ongoing foreground-service notification for the background message watch. -->
+    <string name="service_notification_title">slskd</string>
+    <string name="service_notification_text">Watching for new messages</string>
+    <string name="service_channel_name">Message watch</string>
+    <string name="service_channel_description">Keeps checking slskd for new messages</string>
+
+</resources>

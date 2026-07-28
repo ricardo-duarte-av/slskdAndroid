@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="uploads_title">Uploads</string>
+    <string name="uploads_loading">Loading uploads…</string>
+    <string name="uploads_empty">No uploads. Peers\' requests for your shared files appear here.</string>
+    <string name="uploads_load_failed">Couldn\'t load uploads</string>
+
+    <!-- Multi-select mode -->
+    <string name="uploads_selected_count">%1$d selected</string>
+    <string name="uploads_clear">Clear</string>
+    <string name="uploads_remove">Remove</string>
+    <string name="uploads_toggle_selection">Toggle selection</string>
+    <!-- Announced by TalkBack for the long-press that enters multi-select. -->
+    <string name="uploads_select_transfer">Select transfer</string>
+
+    <!-- Bulk action menus. Uploads are peer-driven, so there is no retry. -->
+    <string name="uploads_bulk_cancel">Cancel</string>
+    <string name="uploads_bulk_remove_all">Remove All</string>
+    <string name="uploads_filter_all">All</string>
+    <string name="uploads_filter_queued">Queued</string>
+    <string name="uploads_filter_in_progress">In progress</string>
+    <string name="uploads_filter_succeeded">Succeeded</string>
+    <string name="uploads_filter_errored">Errored</string>
+    <string name="uploads_filter_cancelled">Cancelled</string>
+    <string name="uploads_filter_all_completed">All completed</string>
+
+    <!-- Peer / directory cards -->
+    <string name="uploads_expand_user">Expand %1$s</string>
+    <string name="uploads_collapse_user">Collapse %1$s</string>
+    <string name="uploads_expand_directory">Expand directory</string>
+    <string name="uploads_collapse_directory">Collapse directory</string>
+    <string name="uploads_more_actions_for">More actions for %1$s</string>
+    <string name="uploads_info">Info</string>
+    <string name="uploads_browse_user">Browse user</string>
+    <string name="uploads_chat">Chat</string>
+
+    <!-- Per-transfer status line. %s values are already-formatted sizes. -->
+    <string name="uploads_status_in_progress">%1$s / %2$s</string>
+    <string name="uploads_status_in_progress_speed">%1$s / %2$s · %3$s/s</string>
+    <string name="uploads_status_queued_position">Queued · #%1$d</string>
+    <string name="uploads_status_queued">Queued · %1$s</string>
+    <string name="uploads_status_sent">Sent · %1$s</string>
+    <string name="uploads_status_failed">Failed · %1$s</string>
+    <string name="uploads_status_failed_reason">Failed · %1$s · %2$s</string>
+
+    <!-- Peer card header: username followed by their file count. -->
+    <plurals name="uploads_peer_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="uploads_peer_summary">%1$s · %2$s</string>
+
+</resources>
