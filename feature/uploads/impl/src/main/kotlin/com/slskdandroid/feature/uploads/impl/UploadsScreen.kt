@@ -40,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.res.pluralStringResource
@@ -101,11 +103,20 @@ internal fun UploadsScreen(
     // While selecting, system back clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(UploadsAction.ClearSelection) }
 
+    // M3 expects a scroll behaviour on app bars over scrolling content; without one the
+
+    // bar is a static block that never yields vertical space.
+
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.uploads_title)) },
                 actions = { SettingsActionButton(onSettings) },
+                scrollBehavior = scrollBehavior,
             )
         },
         bottomBar = {

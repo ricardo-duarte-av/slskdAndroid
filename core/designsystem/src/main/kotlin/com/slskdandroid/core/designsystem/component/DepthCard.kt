@@ -1,6 +1,5 @@
 package com.slskdandroid.core.designsystem.component
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
@@ -11,7 +10,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.takeOrElse
-import androidx.compose.ui.unit.dp
 
 /**
  * Whether the nested cards use the accent tint (true) or the neutral surface ladder (false).
@@ -79,11 +77,19 @@ private fun accentCardContentColor(depth: Int): Color = lerp(
     accentFraction(depth),
 )
 
-/** Corner radius for a nested card at [depth]; tightens as cards nest deeper, reinforcing containment. */
+/**
+ * Corner radius for a nested card at [depth]; tightens as cards nest deeper, reinforcing
+ * containment.
+ *
+ * Reads the theme's shape scale rather than hardcoding dp, so retheming moves the cards with it.
+ * The roles chosen (large/medium/small) resolve to the same 16/12/8dp the literals used, so this
+ * is behaviour-preserving today — but it is now a token, not a magic number.
+ */
+@Composable
 fun nestedCardShape(depth: Int): Shape = when (depth) {
-    0 -> RoundedCornerShape(16.dp)
-    1 -> RoundedCornerShape(12.dp)
-    else -> RoundedCornerShape(8.dp)
+    0 -> MaterialTheme.shapes.large
+    1 -> MaterialTheme.shapes.medium
+    else -> MaterialTheme.shapes.small
 }
 
 /**

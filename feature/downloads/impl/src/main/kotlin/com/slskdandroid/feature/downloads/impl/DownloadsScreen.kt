@@ -39,6 +39,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +48,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.res.pluralStringResource
@@ -100,7 +103,12 @@ internal fun DownloadsScreen(
     // While selecting, a system back press clears the selection rather than leaving the screen.
     BackHandler(enabled = uiState.inSelectionMode) { onAction(DownloadsAction.ClearSelection) }
 
+    // One behaviour shared by both bars, so switching in and out of selection mode doesn't
+    // reset the collapse state.
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             if (uiState.inSelectionMode) {
                 SelectionTopBar(
@@ -108,11 +116,13 @@ internal fun DownloadsScreen(
                     onClear = { onAction(DownloadsAction.ClearSelection) },
                     onCancel = { onAction(DownloadsAction.CancelSelected) },
                     onRemove = { onAction(DownloadsAction.RemoveSelected) },
+                    scrollBehavior = scrollBehavior,
                 )
             } else {
                 TopAppBar(
                     title = { Text(stringResource(R.string.downloads_title)) },
                     actions = { SettingsActionButton(onSettings) },
+                    scrollBehavior = scrollBehavior,
                 )
             }
         },
@@ -146,8 +156,10 @@ private fun SelectionTopBar(
     onClear: () -> Unit,
     onCancel: () -> Unit,
     onRemove: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior,
 ) {
     TopAppBar(
+        scrollBehavior = scrollBehavior,
         navigationIcon = {
             IconButton(onClick = onClear) {
                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.downloads_clear_selection))

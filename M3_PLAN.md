@@ -275,23 +275,41 @@ Still open: repositories other than the connection tester surface raw `Throwable
 / OkHttp text) as `UiText.Raw`. Making those typed too is a larger refactor across every repository
 and is not covered here.
 
-### Stage 3 — Component conformance (medium, design-visible)
+### Stage 3 — Component conformance — **PARTLY DONE**
 
-Depends on Stage 0 and Stage 2.
+Done (2026-07-28):
 
-- B6: `ListItem` for settings rows, toggle rows, conversation rows, room rows.
-- B8: `scrollBehavior` on all 11 top app bars; consider Medium/Large for Search and Browse.
-- B7: consistent progress indicators — wavy everywhere or plain everywhere.
-- B9: `SnackbarHost` in each `Scaffold`; route errors through it; add undo to destructive bulk
-  actions.
-- B5: shape tokens via `MaterialExpressiveTheme(shapes = …)` using `largeIncreased` /
-  `extraLargeIncreased`; `DepthCard` reads the ladder from the theme instead of literals.
-- Expressive components where they earn their place: selection bar → `FloatingToolbar`, sort
-  dropdown → `ButtonGroup`, per-peer overflow → `AppBarRow`. All confirmed present in the pinned
-  alpha23.
+- **B5 shape tokens.** `nestedCardShape` reads `MaterialTheme.shapes` (large/medium/small) instead
+  of literal 16/12/8dp. Those roles resolve to the same values, so it is behaviour-preserving —
+  but it is a token now, and retheming moves the cards with it.
+- **B6 `ListItem` adoption.** Settings rows, the search options toggles, and chat conversation rows
+  are M3 `ListItem`s rather than hand-rolled `Row`+`Column`+`Spacer`. The toggle rows also gained
+  `Modifier.toggleable(role = Role.Switch)`, so a screen reader announces one control instead of a
+  row and a separate switch. *Note: alpha23 deprecated the `headlineContent`-first overload in
+  favour of a trailing `content` lambda — the current form is used.*
+- **B7 progress consistency.** The search progress bar is now `LinearWavyProgressIndicator`,
+  matching the transfer bars it used to sit next to as a plain indicator.
+- **B8 app bar scroll behaviour.** `enterAlwaysScrollBehavior` on **17 of 19** `TopAppBar` call
+  sites, with the `nestedScroll` connection on each `Scaffold`. Screens with several bar variants
+  (downloads' selection bar, rooms' three, browse's five) share one behaviour so the collapse state
+  survives switching between them. The two omissions are deliberate: `ConnectionSetupScreen` is a
+  short form and `PlaceholderScreen` is static — neither scrolls, so a scroll behaviour would do
+  nothing.
 
-**Verification:** screenshot diff per screen before/after; this is the stage most likely to need
-your eye rather than a test.
+Still to do:
+
+- **B9 transient feedback.** No `SnackbarHost` anywhere; errors are still static centred text, and
+  the destructive bulk actions (`BulkRemove`, `RemoveSelected`) commit with no undo. This changes
+  ViewModel surfaces (a one-shot event channel alongside the state flow), so it is a behaviour
+  change worth reviewing on its own.
+- **Expressive component swaps.** The selection bars are still hand-rolled `Surface`+`Row`
+  (→ `FloatingToolbar` / `FlexibleBottomAppBar`), the sort dropdown is a `TextButton`+`DropdownMenu`
+  (→ `ButtonGroup`), and per-peer overflow menus could use `AppBarRow`. All confirmed present in
+  alpha23. Each needs its `@OptIn` marker discovered at compile time, and each is design-visible
+  enough to want a screenshot review rather than a blind swap.
+- **Taller app bars.** Search and Browse are candidates for `MediumFlexibleTopAppBar` /
+  `LargeFlexibleTopAppBar` with `exitUntilCollapsed`, which is a visual decision rather than a
+  conformance fix.
 
 ### Stage 4 — Adaptive layout (medium)
 

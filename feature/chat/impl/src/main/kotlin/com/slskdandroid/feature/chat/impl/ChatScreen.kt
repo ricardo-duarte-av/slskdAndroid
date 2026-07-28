@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -47,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +57,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -96,10 +99,14 @@ internal fun ChatScreen(
     // In a thread, system back returns to the conversation list rather than leaving the tab.
     BackHandler(enabled = thread != null) { onAction(ChatAction.CloseConversation) }
 
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             if (thread != null) {
                 TopAppBar(
+                    scrollBehavior = scrollBehavior,
                     navigationIcon = {
                         IconButton(onClick = { onAction(ChatAction.CloseConversation) }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.chat_back))
@@ -117,6 +124,7 @@ internal fun ChatScreen(
                 TopAppBar(
                     title = { Text(stringResource(R.string.chat_title)) },
                     actions = { SettingsActionButton(onSettings) },
+                    scrollBehavior = scrollBehavior,
                 )
             }
         },
@@ -192,24 +200,21 @@ private fun ConversationList(
 
 @Composable
 private fun ConversationRow(conversation: Conversation, avatar: ByteArray?, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    // M3 ListItem: avatar in the leading slot, unread badge trailing. Replaces a hand-rolled
+    // Row whose padding and type roles were approximations of the same spec.
+    ListItem(
+        leadingContent = { UserAvatar(avatar, size = 40.dp) },
+        trailingContent = {
+            if (conversation.unreadCount > 0) {
+                Badge { Text(conversation.unreadCount.toString()) }
+            }
+        },
+        modifier = Modifier.clickable(onClick = onClick),
     ) {
-        UserAvatar(avatar, size = 40.dp)
-        Spacer(Modifier.width(16.dp))
         Text(
             conversation.username,
-            style = MaterialTheme.typography.titleMedium,
             fontWeight = if (conversation.hasUnread) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.weight(1f),
         )
-        if (conversation.unreadCount > 0) {
-            Badge { Text(conversation.unreadCount.toString()) }
-        }
     }
 }
 

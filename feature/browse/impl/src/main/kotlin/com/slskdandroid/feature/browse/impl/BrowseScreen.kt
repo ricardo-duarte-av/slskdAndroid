@@ -40,11 +40,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
@@ -85,8 +88,13 @@ internal fun BrowseScreen(
         onAction(BrowseAction.CloseUser)
     }
 
+    // One behaviour across all five phase-specific bars, so the collapse state survives moving
+    // between the tree and a folder's file list.
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
-        topBar = { BrowseTopBar(phase, onAction, onSettings) },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = { BrowseTopBar(phase, onAction, onSettings, scrollBehavior) },
         bottomBar = {
             if (phase is BrowsePhase.Files && uiState.selectedCount > 0) {
                 SelectionBar(
@@ -152,7 +160,12 @@ internal fun BrowseScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BrowseTopBar(phase: BrowsePhase, onAction: (BrowseAction) -> Unit, onSettings: () -> Unit) {
+private fun BrowseTopBar(
+    phase: BrowsePhase,
+    onAction: (BrowseAction) -> Unit,
+    onSettings: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior,
+) {
     val closeAction: @Composable () -> Unit = {
         IconButton(onClick = { onAction(BrowseAction.CloseUser) }) {
             Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.browse_close_user))
@@ -162,13 +175,29 @@ private fun BrowseTopBar(phase: BrowsePhase, onAction: (BrowseAction) -> Unit, o
         BrowsePhase.Idle -> TopAppBar(
             title = { Text(stringResource(R.string.browse_title)) },
             actions = { SettingsActionButton(onSettings) },
+            scrollBehavior = scrollBehavior,
         )
 
-        is BrowsePhase.Loading -> TopAppBar(title = { Text(phase.username) }, actions = { closeAction() })
-        is BrowsePhase.Error -> TopAppBar(title = { Text(phase.username) }, actions = { closeAction() })
-        is BrowsePhase.Tree -> TopAppBar(title = { Text(phase.username) }, actions = { closeAction() })
+        is BrowsePhase.Loading -> TopAppBar(
+            title = { Text(phase.username) },
+            actions = { closeAction() },
+            scrollBehavior = scrollBehavior,
+        )
+
+        is BrowsePhase.Error -> TopAppBar(
+            title = { Text(phase.username) },
+            actions = { closeAction() },
+            scrollBehavior = scrollBehavior,
+        )
+
+        is BrowsePhase.Tree -> TopAppBar(
+            title = { Text(phase.username) },
+            actions = { closeAction() },
+            scrollBehavior = scrollBehavior,
+        )
 
         is BrowsePhase.Files -> TopAppBar(
+            scrollBehavior = scrollBehavior,
             navigationIcon = {
                 IconButton(onClick = { onAction(BrowseAction.CloseDirectory) }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.browse_back_to_folders))

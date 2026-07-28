@@ -24,11 +24,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,11 +71,17 @@ internal fun SearchListScreen(
     onOpenSearch: (String) -> Unit,
     onSettings: () -> Unit,
 ) {
+    // M3 expects a scroll behaviour on app bars over scrolling content; without one the
+    // bar is a static block that never yields vertical space.
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.search_title)) },
                 actions = { SettingsActionButton(onSettings) },
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { padding ->

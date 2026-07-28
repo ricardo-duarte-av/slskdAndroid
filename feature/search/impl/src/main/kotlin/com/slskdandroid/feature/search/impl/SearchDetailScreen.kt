@@ -3,6 +3,7 @@ package com.slskdandroid.feature.search.impl
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -35,9 +36,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -46,6 +49,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +57,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -93,7 +99,7 @@ internal fun SearchDetailRoute(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun SearchDetailScreen(
     uiState: SearchDetailUiState,
@@ -103,9 +109,13 @@ internal fun SearchDetailScreen(
     onUserInfo: (String) -> Unit,
     onChatUser: (String) -> Unit,
 ) {
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -142,7 +152,9 @@ internal fun SearchDetailScreen(
 
                 is Phase.Loaded -> {
                     if (!phase.isComplete) {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        // Wavy, to match the transfer progress bars in Downloads/Uploads — the
+                        // app previously mixed wavy and plain indicators on adjacent screens.
+                        LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                     LoadedResults(phase, uiState.options, onAction, onBrowseUser, onUserInfo, onChatUser)
                 }
@@ -381,13 +393,17 @@ private fun SortDropdown(sort: ResultSort, onSelect: (ResultSort) -> Unit) {
 
 @Composable
 private fun ToggleRow(label: String, checked: Boolean, onToggle: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = { onToggle() })
-    }
+    // ListItem rather than a hand-rolled Row: the whole row stays the tap target, and the
+    // headline/trailing slots take their specified metrics. toggleable() gives the row the
+    // Switch role so screen readers announce it as one control instead of two.
+    ListItem(
+        trailingContent = { Switch(checked = checked, onCheckedChange = null) },
+        modifier = Modifier.toggleable(
+            value = checked,
+            onValueChange = { onToggle() },
+            role = Role.Switch,
+        ),
+    ) { Text(label) }
 }
 
 @Composable
