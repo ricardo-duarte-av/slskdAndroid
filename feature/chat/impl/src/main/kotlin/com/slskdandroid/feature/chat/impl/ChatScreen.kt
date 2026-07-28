@@ -77,6 +77,7 @@ import com.slskdandroid.core.model.PrivateMessage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 internal fun ChatRoute(onSettings: () -> Unit, viewModel: ChatViewModel = hiltViewModel()) {
@@ -479,7 +480,12 @@ private fun CenteredContent(content: @Composable () -> Unit) {
 private fun decodeAvatar(bytes: ByteArray): Bitmap? =
     runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
 
-private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+/**
+ * Localized clock time. Was `ofPattern("HH:mm")`, which forced a 24-hour clock on every
+ * locale and ignored the user's 12/24-hour system preference.
+ */
+private val timeFormatter =
+    DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
 
 private fun formatTime(epochMillis: Long): String =
     timeFormatter.format(Instant.ofEpochMilli(epochMillis))

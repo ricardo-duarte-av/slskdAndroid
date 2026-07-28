@@ -10,6 +10,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import com.slskdandroid.core.designsystem.component.UiText
+import com.slskdandroid.core.model.ConnectionFailure
+import com.slskdandroid.core.model.ConnectionFailureException
 import org.junit.Test
 import java.io.IOException
 
@@ -74,7 +76,8 @@ class ConnectionSetupViewModelTest {
 
     @Test
     fun `failed submit surfaces the error message and stops verifying`() = runTest {
-        repository.verifyResult = Result.failure(IOException("Authentication failed"))
+        repository.verifyResult =
+            Result.failure(ConnectionFailureException(ConnectionFailure.AuthRejected))
         val viewModel = ConnectionSetupViewModel(repository)
         viewModel.onAction(ConnectionSetupAction.BaseUrlChanged("http://host"))
         viewModel.onAction(ConnectionSetupAction.ApiKeyChanged("key"))
@@ -82,7 +85,8 @@ class ConnectionSetupViewModelTest {
         viewModel.onAction(ConnectionSetupAction.Submit)
 
         val state = viewModel.uiState.value
-        assertEquals(UiText.Raw("Authentication failed"), state.errorMessage)
+        // Typed failures resolve to a localized resource, not slskd's English text.
+        assertEquals(UiText.Res(R.string.connection_error_auth), state.errorMessage)
         assertFalse(state.isVerifying)
     }
 }

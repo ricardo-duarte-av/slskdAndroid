@@ -17,4 +17,10 @@
     <!-- Shown when the connection attempt failed and slskd gave us no message of its own. -->
     <string name="connection_error_fallback">Could not connect to slskd</string>
 
+    <!-- Connection failures, mapped from ConnectionFailure so they can be translated. -->
+    <string name="connection_error_invalid_url">That doesn\'t look like a valid address. Include http:// or https://.</string>
+    <string name="connection_error_auth">Authentication failed — check the API key.</string>
+    <string name="connection_error_http">slskd returned HTTP %1$d.</string>
+    <string name="connection_error_unreachable">Couldn\'t reach slskd at that address. Check the host and port.</string>
+
 </resources>

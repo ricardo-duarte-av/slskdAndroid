@@ -247,25 +247,33 @@ What the rollout established:
 - **Punctuation and protocol tokens stay in code**: `" · "`, and the slskd `TransferStates` flag
   strings (`"Errored"`, `"Cancelled"`, …) which are matched against the wire format, not shown.
 
-### Stage 2b — Remaining localization gaps (not extraction)
+### Stage 2b — Remaining localization gaps ✅ **DONE**
 
-Extraction is complete, but the app is still not fully localizable. These are **format** problems,
-deliberately left rather than half-fixed:
+- **`formatBytes` existed in four copies**, each pinned to `Locale.US`. Consolidated into
+  `core:designsystem`'s `Formatters.kt`, with the decimal separator now taken from the locale and
+  the unit symbols (`B/KB/MB/GB/TB`) moved to resources. **Sizes stay binary (1024-based)** —
+  `Formatter.formatFileSize` would localize units for free but is SI on modern Android, which would
+  visibly shift every size in the app (1 GiB → "1.07 GB"); Soulseek reports binary.
+- **`qualityLabel`, `formatDuration`, `fileMeta` were duplicated** between search and browse,
+  as were their test files. Now shared. `kHz`/`kbps` stay untranslated — SI symbols, identical
+  across locales; the defect there was the decimal separator, not the symbol.
+- **Locale is read observably.** `Locale.getDefault()` inside a composable is invisible to
+  composition, so a runtime locale change would leave already-composed text stale. The composable
+  formatters read `LocalConfiguration.current.locales[0]`; pure variants take an explicit `Locale`
+  so they stay plain-JVM testable and deterministic. (Caught by lint's `NonObservableLocale`.)
+- **Time formats are localized**: `ofPattern("HH:mm")` → `ofLocalizedTime(SHORT)` in chat and
+  rooms, `ofPattern("MMM d, HH:mm")` → `ofLocalizedDateTime(MEDIUM, SHORT)` in the search list.
+  These forced a 24-hour clock and US field order on every locale.
+- **slskd's error text is now translatable.** `ConnectionFailure` (in `core:model`, so features
+  don't need `core:network`) replaces `IOException("Authentication failed — check the API key")`
+  with typed cases — `InvalidUrl`, `AuthRejected`, `HttpError(code)`, `Unreachable` — mapped to
+  resources in the ViewModel.
+- **One Stage 2 miss found and fixed**: the browse selection bar still had a hand-rolled
+  `"$count file${if (count == 1) "" else "s"}"`.
 
-- **`formatBytes` hardcodes `Locale.US`** (`String.format(Locale.US, "%.1f %s", …)`) so the decimal
-  separator is always a point, and the unit symbols `B/KB/MB/GB/TB` are literals. Same for
-  `"$it kbps"` and `"$value kHz"` in the file-metadata lines.
-- **Time formats are hardcoded patterns** — `DateTimeFormatter.ofPattern("HH:mm")` in chat and
-  rooms, `"MMM d, HH:mm"` in the search list. These are top-level `private val`s, so wiring them to
-  resources means making them composable or context-aware; the better fix is
-  `ofLocalizedTime(FormatStyle.SHORT)`, which respects the user's 12/24-hour preference. Two unused
-  `*_time_format` resources were removed rather than left dangling.
-- **slskd's own error text is untranslatable** — it arrives as `UiText.Raw` from `core:network`
-  (`SlskdConnectionTester`) and repositories' `Throwable.message`. Fixing this means typed failures
-  in `core:network`, which is a separate refactor.
-
-**Still to verify on device:** pseudolocale (`en-XA`) run for truncation and concatenation, and an
-RTL (`ar-XB`) pass — `supportsRtl="true"` is declared but has never been exercised.
+Still open: repositories other than the connection tester surface raw `Throwable.message` (Retrofit
+/ OkHttp text) as `UiText.Raw`. Making those typed too is a larger refactor across every repository
+and is not covered here.
 
 ### Stage 3 — Component conformance (medium, design-visible)
 

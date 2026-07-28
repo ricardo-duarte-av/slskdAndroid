@@ -64,6 +64,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.DepthCard
+import com.slskdandroid.core.designsystem.component.qualityLabelLocalized
+import com.slskdandroid.core.designsystem.component.formatDurationLocalized
+import com.slskdandroid.core.designsystem.component.formatBytes
+import com.slskdandroid.core.designsystem.component.formatBitRateLocalized
 import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.SearchResultFile
 import kotlin.math.min
@@ -650,36 +654,14 @@ private fun CenteredMessage(
 }
 
 /** size · bitrate · quality · length · type, omitting parts slskd didn't report. */
+@Composable
 private fun fileMeta(file: SearchResultFile): String = buildList {
     add(formatBytes(file.sizeBytes))
-    file.bitRate?.let { add("$it kbps") }
-    qualityLabel(file)?.let { add(it) }
-    file.lengthSeconds?.let { add(formatDuration(it)) }
+    file.bitRate?.let { add(formatBitRateLocalized(it)) }
+    qualityLabelLocalized(file.bitDepth, file.sampleRate)?.let { add(it) }
+    file.lengthSeconds?.let { add(formatDurationLocalized(it)) }
     file.extension?.takeIf { it.isNotBlank() }?.let { add(it.trimStart('.').uppercase()) }
 }.joinToString(" · ")
 
-/**
- * slskd-style audio quality from bit depth + sample rate, e.g. "16/44.1 kHz" (lossless), or just
- * the sample rate when the depth is unknown. Null when neither was reported (typical for lossy).
- */
-internal fun qualityLabel(file: SearchResultFile): String? {
-    val sampleRate = file.sampleRate?.takeIf { it > 0 }?.let(::formatSampleRate)
-    val bitDepth = file.bitDepth?.takeIf { it > 0 }
-    return when {
-        bitDepth != null && sampleRate != null -> "$bitDepth/$sampleRate"
-        else -> sampleRate
-    }
-}
 
-/** Hz → a compact kHz label: 44100 → "44.1 kHz", 48000 → "48 kHz". */
-private fun formatSampleRate(hz: Int): String {
-    val khz = hz / 1000.0
-    val value = if (khz % 1.0 == 0.0) khz.toInt().toString() else "%.1f".format(khz)
-    return "$value kHz"
-}
 
-private fun formatDuration(seconds: Int): String {
-    val m = seconds / 60
-    val s = seconds % 60
-    return "%d:%02d".format(m, s)
-}

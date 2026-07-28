@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.DepthCard
+import com.slskdandroid.core.designsystem.component.formatBytes
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.designsystem.component.TransferItem
@@ -67,7 +68,6 @@ import com.slskdandroid.core.designsystem.component.nestedCardColor
 import com.slskdandroid.core.designsystem.component.transferStatusOf
 import com.slskdandroid.core.model.Upload
 import com.slskdandroid.core.model.UploadState
-import java.util.Locale
 
 @Composable
 internal fun UploadsRoute(
@@ -602,16 +602,5 @@ private fun Upload.statusLine(): String = when (state) {
     UploadState.Unknown -> formatBytes(sizeBytes)
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes < 1024) return "$bytes B"
-    val units = listOf("KB", "MB", "GB", "TB")
-    var value = bytes / 1024.0
-    var unitIndex = 0
-    while (value >= 1024 && unitIndex < units.lastIndex) {
-        value /= 1024.0
-        unitIndex++
-    }
-    return String.format(Locale.US, "%.1f %s", value, units[unitIndex])
-}
 
 

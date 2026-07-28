@@ -26,4 +26,12 @@
     <string name="ds_transfer_count_errored">%1$d errored</string>
     <string name="ds_transfer_count_unknown">%1$d unknown</string>
 
+    <!-- Byte sizes. %1$s is the already locale-formatted number; the unit symbol is a separate
+         resource so locales that transliterate KB/MB/GB/TB can do so, and so RTL can reorder. -->
+    <string name="ds_size_bytes">%1$d B</string>
+    <string name="ds_size_kb">%1$s KB</string>
+    <string name="ds_size_mb">%1$s MB</string>
+    <string name="ds_size_gb">%1$s GB</string>
+    <string name="ds_size_tb">%1$s TB</string>
+
 </resources>

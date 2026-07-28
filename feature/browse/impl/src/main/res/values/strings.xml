@@ -25,4 +25,11 @@
     <string name="browse_clear">Clear</string>
     <string name="browse_download_selected">Download selected</string>
 
+    <!-- Selection bar: "3 files · 41.2 MB" -->
+    <plurals name="browse_selected_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="browse_selection_summary">%1$s · %2$s</string>
+
 </resources>

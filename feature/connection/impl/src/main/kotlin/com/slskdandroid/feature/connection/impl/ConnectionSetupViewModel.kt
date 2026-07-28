@@ -3,7 +3,10 @@ package com.slskdandroid.feature.connection.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.ConnectionSettingsRepository
+import com.slskdandroid.core.designsystem.component.UiText
 import com.slskdandroid.core.designsystem.component.toUiText
+import com.slskdandroid.core.model.ConnectionFailure
+import com.slskdandroid.core.model.ConnectionFailureException
 import com.slskdandroid.core.model.ConnectionSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -55,10 +58,22 @@ class ConnectionSetupViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isVerifying = false,
-                            errorMessage = error.toUiText(R.string.connection_error_fallback),
+                            errorMessage = error.toUiMessage(),
                         )
                     }
                 }
         }
     }
+}
+
+/**
+ * Maps a verification failure to displayable text. Typed [ConnectionFailure]s become localized
+ * resources; anything else falls back to its own message, then to a generic string.
+ */
+private fun Throwable.toUiMessage(): UiText = when (val failure = (this as? ConnectionFailureException)?.failure) {
+    ConnectionFailure.InvalidUrl -> UiText.Res(R.string.connection_error_invalid_url)
+    ConnectionFailure.AuthRejected -> UiText.Res(R.string.connection_error_auth)
+    is ConnectionFailure.HttpError -> UiText.Res(R.string.connection_error_http, failure.code)
+    ConnectionFailure.Unreachable -> UiText.Res(R.string.connection_error_unreachable)
+    null -> toUiText(R.string.connection_error_fallback)
 }

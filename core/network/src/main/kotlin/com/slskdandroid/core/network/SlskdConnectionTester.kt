@@ -1,13 +1,14 @@
 package com.slskdandroid.core.network
 
 import com.slskdandroid.core.common.IoDispatcher
+import com.slskdandroid.core.model.ConnectionFailure
+import com.slskdandroid.core.model.ConnectionFailureException
 import com.slskdandroid.core.model.ConnectionSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,25 +41,34 @@ class SlskdConnectionTester @Inject constructor(
             .callTimeout(VERIFY_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .build()
 
+        // Failures are reported as ConnectionFailure cases rather than English messages, so the
+        // UI can localize them (see ConnectionFailureException).
+        val url = (settings.baseUrl.trimEnd('/') + "/api/v0/application").toHttpUrlOrNull()
+            ?: return@withContext Result.failure(
+                ConnectionFailureException(ConnectionFailure.InvalidUrl),
+            )
+
+        val request = Request.Builder()
+            .url(url)
+            .header("X-API-Key", settings.apiKey)
+            .get()
+            .build()
+
         runCatching {
-            val url = (settings.baseUrl.trimEnd('/') + "/api/v0/application").toHttpUrlOrNull()
-                ?: throw IOException("Invalid slskd base URL")
-
-            val request = Request.Builder()
-                .url(url)
-                .header("X-API-Key", settings.apiKey)
-                .get()
-                .build()
-
             client.newCall(request).execute().use { response ->
                 when {
                     response.isSuccessful -> Unit
                     response.code == 401 || response.code == 403 ->
-                        throw IOException("Authentication failed — check the API key")
+                        throw ConnectionFailureException(ConnectionFailure.AuthRejected)
 
-                    else -> throw IOException("slskd returned HTTP ${response.code}")
+                    else -> throw ConnectionFailureException(ConnectionFailure.HttpError(response.code))
                 }
             }
+        }.recoverCatching { error ->
+            // Anything that isn't already typed never reached slskd at all: bad host/port, no
+            // route, TLS failure, timeout.
+            throw error as? ConnectionFailureException
+                ?: ConnectionFailureException(ConnectionFailure.Unreachable)
         }
     }
 

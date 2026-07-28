@@ -45,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.state.ToggleableState
@@ -57,6 +58,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.formatBytes
 import com.slskdandroid.core.designsystem.component.asString
 
 @Composable
@@ -406,7 +408,11 @@ private fun SelectionBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "$count file${if (count == 1) "" else "s"} · ${formatBytes(sizeBytes)}",
+                stringResource(
+                    R.string.browse_selection_summary,
+                    pluralStringResource(R.plurals.browse_selected_files, count, count),
+                    formatBytes(sizeBytes),
+                ),
                 style = MaterialTheme.typography.titleSmall,
             )
             Spacer(Modifier.weight(1f))

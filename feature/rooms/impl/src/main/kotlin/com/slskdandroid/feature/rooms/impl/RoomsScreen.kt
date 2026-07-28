@@ -78,6 +78,7 @@ import com.slskdandroid.core.model.RoomUser
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 internal fun RoomsRoute(
@@ -605,7 +606,12 @@ private fun countryFlag(code: String?): String? {
     return String(Character.toChars(first)) + String(Character.toChars(second))
 }
 
-private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+/**
+ * Localized clock time. Was `ofPattern("HH:mm")`, which forced a 24-hour clock on every
+ * locale and ignored the user's 12/24-hour system preference.
+ */
+private val timeFormatter =
+    DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault())
 
 private fun formatTime(epochMillis: Long): String =
     timeFormatter.format(Instant.ofEpochMilli(epochMillis))
