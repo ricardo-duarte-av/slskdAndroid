@@ -45,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +57,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
+import com.slskdandroid.core.designsystem.component.asString
 
 @Composable
 internal fun BrowseRoute(
@@ -102,23 +104,32 @@ internal fun BrowseScreen(
                     val percent = phase.percent
                     if (percent == null) {
                         CircularProgressIndicator()
-                        Text("Browsing ${phase.username}…", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.browse_loading, phase.username),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     } else {
                         CircularProgressIndicator(progress = { percent / 100f })
-                        Text("Browsing ${phase.username}… $percent%", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.browse_loading_percent, phase.username, percent),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                     }
                 }
 
-                is BrowsePhase.Error -> CenteredMessage(phase.message, MaterialTheme.colorScheme.error)
+                is BrowsePhase.Error ->
+                    CenteredMessage(phase.message.asString(), MaterialTheme.colorScheme.error)
 
                 is BrowsePhase.Tree -> Column(Modifier.fillMaxSize()) {
-                    FilterField(phase.filter, "Filter folders") { onAction(BrowseAction.SetTreeFilter(it)) }
+                    FilterField(phase.filter, stringResource(R.string.browse_filter_folders)) {
+                        onAction(BrowseAction.SetTreeFilter(it))
+                    }
                     if (phase.rows.isEmpty()) {
                         CenteredMessage(
                             if (phase.filter.isBlank()) {
                                 "${phase.username} isn't sharing any files."
                             } else {
-                                "No folders match “${phase.filter}”."
+                                stringResource(R.string.browse_no_folders_match, phase.filter)
                             },
                         )
                     } else {
@@ -127,7 +138,9 @@ internal fun BrowseScreen(
                 }
 
                 is BrowsePhase.Files -> Column(Modifier.fillMaxSize()) {
-                    FilterField(phase.filter, "Filter files") { onAction(BrowseAction.SetFileFilter(it)) }
+                    FilterField(phase.filter, stringResource(R.string.browse_filter_files)) {
+                        onAction(BrowseAction.SetFileFilter(it))
+                    }
                     FileList(phase, onAction)
                 }
             }
@@ -140,11 +153,14 @@ internal fun BrowseScreen(
 private fun BrowseTopBar(phase: BrowsePhase, onAction: (BrowseAction) -> Unit, onSettings: () -> Unit) {
     val closeAction: @Composable () -> Unit = {
         IconButton(onClick = { onAction(BrowseAction.CloseUser) }) {
-            Icon(Icons.Filled.Close, contentDescription = "Close user")
+            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.browse_close_user))
         }
     }
     when (phase) {
-        BrowsePhase.Idle -> TopAppBar(title = { Text("Browse") }, actions = { SettingsActionButton(onSettings) })
+        BrowsePhase.Idle -> TopAppBar(
+            title = { Text(stringResource(R.string.browse_title)) },
+            actions = { SettingsActionButton(onSettings) },
+        )
 
         is BrowsePhase.Loading -> TopAppBar(title = { Text(phase.username) }, actions = { closeAction() })
         is BrowsePhase.Error -> TopAppBar(title = { Text(phase.username) }, actions = { closeAction() })
@@ -153,7 +169,7 @@ private fun BrowseTopBar(phase: BrowsePhase, onAction: (BrowseAction) -> Unit, o
         is BrowsePhase.Files -> TopAppBar(
             navigationIcon = {
                 IconButton(onClick = { onAction(BrowseAction.CloseDirectory) }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to folders")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.browse_back_to_folders))
                 }
             },
             title = {
@@ -169,18 +185,18 @@ private fun IdlePrompt(query: String, onAction: (BrowseAction) -> Unit) {
     OutlinedTextField(
         value = query,
         onValueChange = { onAction(BrowseAction.QueryChanged(it)) },
-        label = { Text("Username") },
+        label = { Text(stringResource(R.string.browse_username_label)) },
         singleLine = true,
         trailingIcon = {
             IconButton(onClick = { onAction(BrowseAction.Submit) }) {
-                Icon(Icons.Filled.Folder, contentDescription = "Browse")
+                Icon(Icons.Filled.Folder, contentDescription = stringResource(R.string.browse_action))
             }
         },
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onAction(BrowseAction.Submit) }),
         modifier = Modifier.fillMaxWidth().padding(16.dp),
     )
-    CenteredMessage("Enter a username to browse their shared files.")
+    CenteredMessage(stringResource(R.string.browse_empty))
 }
 
 @Composable
@@ -193,7 +209,7 @@ private fun FilterField(value: String, label: String, onChange: (String) -> Unit
         trailingIcon = {
             if (value.isNotEmpty()) {
                 IconButton(onClick = { onChange("") }) {
-                    Icon(Icons.Filled.Clear, contentDescription = "Clear filter")
+                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.browse_clear_filter))
                 }
             }
         },
@@ -246,7 +262,9 @@ private fun TreeNodeRow(
             ) {
                 Icon(
                     imageVector = if (row.expanded) Icons.Filled.KeyboardArrowDown else Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = if (row.expanded) "Collapse" else "Expand",
+                    contentDescription = stringResource(
+                        if (row.expanded) R.string.browse_collapse else R.string.browse_expand,
+                    ),
                 )
             }
         } else {
@@ -316,7 +334,7 @@ private fun FileList(phase: BrowsePhase.Files, onAction: (BrowseAction) -> Unit)
         if (phase.files.isEmpty()) {
             item(key = "no-match") {
                 Text(
-                    "No files match “${phase.filter}”.",
+                    stringResource(R.string.browse_no_files_match, phase.filter),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -344,7 +362,7 @@ private fun FileRow(shown: ShownFile, onAction: (BrowseAction) -> Unit) {
         if (file.isLocked) {
             Icon(
                 Icons.Filled.Lock,
-                contentDescription = "Locked",
+                contentDescription = stringResource(R.string.browse_locked),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(16.dp),
             )
@@ -370,7 +388,7 @@ private fun FileRow(shown: ShownFile, onAction: (BrowseAction) -> Unit) {
             onClick = { onAction(BrowseAction.Download(file)) },
             enabled = !file.isLocked,
         ) {
-            Icon(Icons.Filled.Download, contentDescription = "Download")
+            Icon(Icons.Filled.Download, contentDescription = stringResource(R.string.browse_download))
         }
     }
 }
@@ -392,9 +410,9 @@ private fun SelectionBar(
                 style = MaterialTheme.typography.titleSmall,
             )
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onClear) { Text("Clear") }
+            TextButton(onClick = onClear) { Text(stringResource(R.string.browse_clear)) }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = onDownload) { Text("Download selected") }
+            Button(onClick = onDownload) { Text(stringResource(R.string.browse_download_selected)) }
         }
     }
 }

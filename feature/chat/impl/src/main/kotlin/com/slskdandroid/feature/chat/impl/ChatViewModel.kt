@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.AvatarRepository
 import com.slskdandroid.core.data.ChatRepository
+import com.slskdandroid.core.designsystem.component.UiText
+import com.slskdandroid.core.designsystem.component.toUiText
 import com.slskdandroid.core.model.Conversation
 import com.slskdandroid.core.model.PrivateMessage
 import com.slskdandroid.feature.chat.api.CHAT_USER_ARG
@@ -50,7 +52,7 @@ class ChatViewModel @Inject constructor(
             .onEach { conversations -> ensureAvatars(conversations.map { it.username }) }
             .map<List<Conversation>, ListState> { ListState.Loaded(it) }
             .onStart { emit(ListState.Loading) }
-            .catch { e -> emit(ListState.Error(e.message ?: "Couldn't load conversations.")) }
+            .catch { e -> emit(ListState.Error(e.toUiText(R.string.chat_error_load_failed))) }
     }
 
     private val threadState: Flow<ThreadState?> =
@@ -150,8 +152,10 @@ class ChatViewModel @Inject constructor(
         val text = current.message.trim()
         if (current.sending) return
         when {
-            username.isEmpty() -> composer.update { it.copy(error = "Enter a username.") }
-            text.isEmpty() -> composer.update { it.copy(error = "Enter a message.") }
+            username.isEmpty() ->
+                composer.update { it.copy(error = UiText.Res(R.string.chat_error_enter_username)) }
+            text.isEmpty() ->
+                composer.update { it.copy(error = UiText.Res(R.string.chat_error_enter_message)) }
             else -> {
                 composer.update { it.copy(sending = true, error = null) }
                 viewModelScope.launch {
@@ -165,7 +169,7 @@ class ChatViewModel @Inject constructor(
                         }
                         .onFailure { e ->
                             composer.update {
-                                it.copy(sending = false, error = e.message ?: "Couldn't send message.")
+                                it.copy(sending = false, error = e.toUiText(R.string.chat_error_send_failed))
                             }
                         }
                 }

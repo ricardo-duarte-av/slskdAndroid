@@ -3,12 +3,14 @@ package com.slskdandroid.core.designsystem.component
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.unit.dp
 
 /**
@@ -36,16 +38,46 @@ private fun neutralCardColor(depth: Int): Color = when (depth) {
     else -> MaterialTheme.colorScheme.surfaceContainerHighest
 }
 
-/** Primary blended over the surface at increasing strength with depth. */
+/**
+ * Content color paired with [nestedCardColor] at the same [depth].
+ *
+ * Only consulted when the container isn't a scheme role that `contentColorFor` already knows (see
+ * [DepthCard]) — i.e. for the accent tint, whose blended container has no built-in `on*` partner.
+ */
 @Composable
-private fun accentCardColor(depth: Int): Color {
-    val fraction = when (depth) {
-        0 -> 0.06f
-        1 -> 0.12f
-        else -> 0.20f
-    }
-    return lerp(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.primary, fraction)
+fun nestedCardContentColor(depth: Int): Color =
+    if (LocalUseAccentCards.current) accentCardContentColor(depth) else MaterialTheme.colorScheme.onSurface
+
+/** How strongly the accent tint is mixed into the surface at each depth. */
+private fun accentFraction(depth: Int): Float = when (depth) {
+    0 -> 0.06f
+    1 -> 0.12f
+    else -> 0.20f
 }
+
+/**
+ * Accent container: `primaryContainer` blended over the surface, deepening with depth.
+ *
+ * Blends toward **primaryContainer**, not `primary`. Both endpoints of this interpolation are a
+ * valid Material pair (`surface`/`onSurface` and `primaryContainer`/`onPrimaryContainer`), so
+ * blending container and content in lockstep (see [accentCardContentColor]) keeps a legible
+ * pairing at every fraction. Blending toward `primary` had no `on*` partner to travel with, which
+ * left `onSurface` text sitting on an increasingly primary-tinted background at depth 2.
+ */
+@Composable
+private fun accentCardColor(depth: Int): Color = lerp(
+    MaterialTheme.colorScheme.surface,
+    MaterialTheme.colorScheme.primaryContainer,
+    accentFraction(depth),
+)
+
+/** The `on*` partner of [accentCardColor], blended by the same fraction so the pairing holds. */
+@Composable
+private fun accentCardContentColor(depth: Int): Color = lerp(
+    MaterialTheme.colorScheme.onSurface,
+    MaterialTheme.colorScheme.onPrimaryContainer,
+    accentFraction(depth),
+)
 
 /** Corner radius for a nested card at [depth]; tightens as cards nest deeper, reinforcing containment. */
 fun nestedCardShape(depth: Int): Shape = when (depth) {
@@ -57,16 +89,23 @@ fun nestedCardShape(depth: Int): Shape = when (depth) {
 /**
  * A nested result card at [depth] (see [nestedCardColor]). Pass [color] to override the tonal
  * default — e.g. a selection highlight on a file row.
+ *
+ * [contentColor] resolves in the Material way first: a [color] that *is* a scheme role (the neutral
+ * ladder, or a caller's `secondaryContainer` selection highlight) yields its declared `on*` partner
+ * via `contentColorFor`. Only a blended container — which `contentColorFor` can't match and would
+ * otherwise answer `Unspecified` for — falls back to [nestedCardContentColor].
  */
 @Composable
 fun DepthCard(
     depth: Int,
     modifier: Modifier = Modifier,
     color: Color = nestedCardColor(depth),
+    contentColor: Color = contentColorFor(color).takeOrElse { nestedCardContentColor(depth) },
     content: @Composable () -> Unit,
 ) {
     Surface(
         color = color,
+        contentColor = contentColor,
         shape = nestedCardShape(depth),
         modifier = modifier,
         content = content,

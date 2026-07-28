@@ -7,9 +7,11 @@ import com.slskdandroid.core.model.DownloadState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
+import com.slskdandroid.core.designsystem.component.UiText
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -23,7 +25,7 @@ class DownloadsViewModelTest {
     @Test
     fun `groups downloads by user`() = runTest {
         repository.downloadsFlow = flowOf(listOf(download("1", "alice"), download("2", "alice"), download("3", "bob")))
-        val viewModel = DownloadsViewModel(repository)
+        val viewModel = DownloadsViewModel(repository, UnconfinedTestDispatcher(testScheduler))
 
         viewModel.uiState.test {
             val loaded = awaitItemWhere { it.loadState is LoadState.Loaded }
@@ -36,11 +38,11 @@ class DownloadsViewModelTest {
     @Test
     fun `a failing stream maps to an error state`() = runTest {
         repository.downloadsFlow = flow { throw RuntimeException("offline") }
-        val viewModel = DownloadsViewModel(repository)
+        val viewModel = DownloadsViewModel(repository, UnconfinedTestDispatcher(testScheduler))
 
         viewModel.uiState.test {
             val errored = awaitItemWhere { it.loadState is LoadState.Error }
-            assertEquals("offline", (errored.loadState as LoadState.Error).message)
+            assertEquals(UiText.Raw("offline"), (errored.loadState as LoadState.Error).message)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -48,7 +50,7 @@ class DownloadsViewModelTest {
     @Test
     fun `cancelling the selection cancels each selected transfer`() = runTest {
         repository.downloadsFlow = flowOf(listOf(download("1", "alice"), download("2", "bob")))
-        val viewModel = DownloadsViewModel(repository)
+        val viewModel = DownloadsViewModel(repository, UnconfinedTestDispatcher(testScheduler))
 
         viewModel.uiState.test {
             awaitItemWhere { it.loadState is LoadState.Loaded }

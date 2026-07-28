@@ -3,6 +3,7 @@ package com.slskdandroid.feature.rooms.impl
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.RoomsRepository
+import com.slskdandroid.core.designsystem.component.toUiText
 import com.slskdandroid.core.model.RoomMessage
 import com.slskdandroid.core.model.RoomUser
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,7 +47,7 @@ class RoomsViewModel @Inject constructor(
         roomsRepository.joinedRooms()
             .map<List<String>, ListState> { ListState.Loaded(it) }
             .onStart { emit(ListState.Loading) }
-            .catch { e -> emit(ListState.Error(e.message ?: "Couldn't load rooms.")) }
+            .catch { e -> emit(ListState.Error(e.toUiText(R.string.rooms_load_failed))) }
     }
 
     private val messagesFlow: Flow<RoomMessages?> = openRoom.flatMapLatest { room ->
@@ -110,7 +111,7 @@ class RoomsViewModel @Inject constructor(
                     emit(
                         runCatching { roomsRepository.availableRooms() }.fold(
                             onSuccess = { SearchPhase.Loaded(it) },
-                            onFailure = { SearchPhase.Error(it.message ?: "Couldn't load rooms.") },
+                            onFailure = { SearchPhase.Error(it.toUiText(R.string.rooms_load_failed)) },
                         ),
                     )
                 }

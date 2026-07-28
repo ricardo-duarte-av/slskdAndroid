@@ -2,6 +2,7 @@ package com.slskdandroid.feature.users.impl
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.slskdandroid.core.designsystem.component.toUiText
 import androidx.lifecycle.viewModelScope
 import com.slskdandroid.core.data.UsersRepository
 import com.slskdandroid.feature.users.api.USERS_USER_ARG
@@ -58,7 +59,7 @@ class UsersViewModel @Inject constructor(
                 .onFailure {
                     _uiState.value = UsersUiState.Error(
                         username = username,
-                        message = it.message ?: "Couldn't load $username. They may be offline.",
+                        message = it.toUiText(R.string.users_load_failed, username),
                     )
                 }
         }

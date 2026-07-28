@@ -26,7 +26,11 @@ internal class DefaultBrowseRepository @Inject constructor(
 
         // The browse GET blocks until the whole share arrives; meanwhile poll the status endpoint
         // (a bare percent, 404 before it starts / after it ends) to surface progress.
-        val browse = async { api.getBrowse(username) }
+        //
+        // The result is captured with runCatching *inside* the async: a failing async would
+        // otherwise cancel the enclosing channelFlow scope, and the collector could see an opaque
+        // CancellationException instead of the real failure (peer offline, timeout, …).
+        val browse = async { runCatching { api.getBrowse(username) } }
         while (browse.isActive) {
             runCatching { api.getBrowseStatus(username) }.getOrNull()?.let { percent ->
                 trySend(BrowseProgress.Loading(percent.coerceIn(0.0, 100.0).roundToInt()))
@@ -34,7 +38,7 @@ internal class DefaultBrowseRepository @Inject constructor(
             delay(POLL_INTERVAL_MS)
         }
 
-        val response = browse.await()
+        val response = browse.await().getOrThrow()
         val directories =
             response.directories.toBrowseDirectories(locked = false) +
                 response.lockedDirectories.toBrowseDirectories(locked = true)

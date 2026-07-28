@@ -11,6 +11,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultChatRepositoryTest {
@@ -84,5 +85,50 @@ class DefaultChatRepositoryTest {
 
         assertEquals("alice" to "hello", sent.single())
         assertEquals("alice", acknowledged.single())
+    }
+
+    @Test
+    fun `messages keep the last good snapshot when a poll fails`() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        var call = 0
+        val api = object : FakeSlskdApi() {
+            override suspend fun getMessages(username: String): List<NetworkPrivateMessage> {
+                call++
+                // 1st poll succeeds, 2nd blips, 3rd recovers with a new message.
+                return when (call) {
+                    1 -> listOf(NetworkPrivateMessage(id = 1, username = "alice", direction = "In", message = "hey"))
+                    2 -> throw IOException("network blip")
+                    else -> listOf(
+                        NetworkPrivateMessage(id = 1, username = "alice", direction = "In", message = "hey"),
+                        NetworkPrivateMessage(id = 2, username = "alice", direction = "In", message = "you there?"),
+                    )
+                }
+            }
+        }
+        val repository = DefaultChatRepository(api, dispatcher)
+
+        repository.messages("alice").test {
+            assertEquals(listOf("hey"), awaitItem().map { it.message })
+            // The blip re-emits the previous snapshot rather than blanking the open thread.
+            assertEquals(listOf("hey"), awaitItem().map { it.message })
+            assertEquals(listOf("hey", "you there?"), awaitItem().map { it.message })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `messages start empty when the very first poll fails`() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val api = object : FakeSlskdApi() {
+            // A 404 here means "no conversation yet" — an empty thread, not an error.
+            override suspend fun getMessages(username: String): List<NetworkPrivateMessage> =
+                throw IOException("404")
+        }
+        val repository = DefaultChatRepository(api, dispatcher)
+
+        repository.messages("stranger").test {
+            assertEquals(emptyList<String>(), awaitItem().map { it.message })
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back</string>
+
+    <!-- Background message notifications -->
+    <string name="settings_notifications_title">Message notifications</string>
+    <string name="settings_notifications_subtitle">Check slskd in the background and notify on new DMs and room mentions.</string>
+    <string name="settings_interval_title">Check interval</string>
+    <string name="settings_interval_subtitle">How often the background service polls for new messages. Shorter intervals are more responsive but use more battery and data.</string>
+
+    <!-- Check-interval readouts. Deliberately three separate forms rather than string
+         concatenation, so a translation can reorder or re-unit them. -->
+    <string name="settings_interval_seconds">%1$ds</string>
+    <string name="settings_interval_minutes">%1$d min</string>
+    <string name="settings_interval_minutes_seconds">%1$d min %2$ds</string>
+
+    <!-- Appearance -->
+    <string name="settings_card_style_title">Card style</string>
+    <string name="settings_card_style_subtitle">How the nested result and transfer cards are tinted. Neutral uses subtle surface shades; Accent tints them with the theme color, deepening as they nest.</string>
+    <string name="settings_card_style_neutral">Neutral</string>
+    <string name="settings_card_style_accent">Accent</string>
+
+</resources>

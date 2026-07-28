@@ -12,6 +12,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultRoomsRepositoryTest {
@@ -108,5 +109,33 @@ class DefaultRoomsRepositoryTest {
         assertEquals("music", joined.single())
         assertEquals("lobby", left.single())
         assertEquals("music" to "hello", sent.single())
+    }
+
+    @Test
+    fun `messages keep the last good snapshot when a poll fails`() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        var call = 0
+        val api = object : FakeSlskdApi() {
+            override suspend fun getRoomMessages(room: String): List<NetworkRoomMessage> {
+                call++
+                return when (call) {
+                    1 -> listOf(NetworkRoomMessage(username = "alice", message = "hi"))
+                    2 -> throw IOException("network blip")
+                    else -> listOf(
+                        NetworkRoomMessage(username = "alice", message = "hi"),
+                        NetworkRoomMessage(username = "bob", message = "yo"),
+                    )
+                }
+            }
+        }
+        val repository = DefaultRoomsRepository(api, dispatcher)
+
+        repository.messages("lobby").test {
+            assertEquals(listOf("hi"), awaitItem().map { it.message })
+            // The blip re-emits the previous snapshot rather than blanking the open room.
+            assertEquals(listOf("hi"), awaitItem().map { it.message })
+            assertEquals(listOf("hi", "yo"), awaitItem().map { it.message })
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

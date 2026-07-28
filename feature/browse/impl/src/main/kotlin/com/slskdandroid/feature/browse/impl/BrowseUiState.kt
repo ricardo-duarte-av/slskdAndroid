@@ -1,5 +1,7 @@
 package com.slskdandroid.feature.browse.impl
 
+import com.slskdandroid.core.designsystem.component.UiText
+
 import com.slskdandroid.core.model.SearchResultFile
 
 data class BrowseUiState(
@@ -17,7 +19,7 @@ sealed interface BrowsePhase {
     /** [percent] is null while the figure is unknown (show an indeterminate indicator). */
     data class Loading(val username: String, val percent: Int?) : BrowsePhase
 
-    data class Error(val username: String, val message: String) : BrowsePhase
+    data class Error(val username: String, val message: UiText) : BrowsePhase
 
     /** The directory tree for [username] (folders only); tap a folder to view its files. */
     data class Tree(val username: String, val filter: String, val rows: List<TreeRow>) : BrowsePhase

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- MessageNotifier posts message notifications from this module, so the requirement is
+         declared here rather than only in :app — the manifest merger unions it into consumers,
+         and it lets lint verify the module in isolation. The runtime grant is still requested
+         from MainActivity, and MessageNotifier.post() checks it before notifying. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+</manifest>

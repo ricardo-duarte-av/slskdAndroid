@@ -36,11 +36,17 @@ internal class DefaultChatRepository @Inject constructor(
     }.flowOn(ioDispatcher)
 
     override fun messages(username: String): Flow<List<PrivateMessage>> = flow {
+        // A 404 simply means no conversation exists yet (e.g. opened from a peer we've never
+        // messaged) — the first failure yields an empty thread so the composer still renders.
+        // Afterwards the last good snapshot is re-emitted instead: a transient network blip must
+        // not blank out an open conversation for a poll cycle and then repopulate it.
+        var lastGood: List<PrivateMessage>? = null
         while (currentCoroutineContext().isActive) {
-            // A 404 simply means no conversation exists yet (e.g. opened from a peer we've never
-            // messaged) — treat it as an empty thread so the composer still renders.
-            val messages = runCatching { api.getMessages(username) }.getOrDefault(emptyList())
-            emit(messages.map(NetworkPrivateMessage::toModel))
+            val messages = runCatching { api.getMessages(username) }
+                .map { it.map(NetworkPrivateMessage::toModel) }
+                .getOrElse { lastGood ?: emptyList() }
+            lastGood = messages
+            emit(messages)
             delay(MESSAGES_POLL_INTERVAL_MS)
         }
     }.flowOn(ioDispatcher)
@@ -57,8 +63,18 @@ internal class DefaultChatRepository @Inject constructor(
         withContext(ioDispatcher) { api.sendMessage(username, text) }
     }
 
+    /**
+     * Best-effort, but retried: a silently-dropped acknowledgement leaves the thread unread
+     * server-side (and re-notifying) with nothing in the UI to indicate it, and the user has no way
+     * to trigger another attempt short of reopening the thread.
+     */
     override suspend fun acknowledge(username: String) {
-        withContext(ioDispatcher) { runCatching { api.acknowledgeConversation(username) } }
+        withContext(ioDispatcher) {
+            repeat(ACKNOWLEDGE_ATTEMPTS) { attempt ->
+                if (runCatching { api.acknowledgeConversation(username) }.isSuccess) return@withContext
+                if (attempt < ACKNOWLEDGE_ATTEMPTS - 1) delay(ACKNOWLEDGE_RETRY_DELAY_MS)
+            }
+        }
     }
 }
 
@@ -80,3 +96,5 @@ private fun NetworkPrivateMessage.toModel() = PrivateMessage(
 
 private const val CONVERSATIONS_POLL_INTERVAL_MS = 3_000L
 private const val MESSAGES_POLL_INTERVAL_MS = 2_000L
+private const val ACKNOWLEDGE_ATTEMPTS = 3
+private const val ACKNOWLEDGE_RETRY_DELAY_MS = 1_000L

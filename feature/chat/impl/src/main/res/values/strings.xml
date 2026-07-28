@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="chat_title">Chat</string>
+    <string name="chat_back">Back</string>
+    <string name="chat_new_message">New message</string>
+    <string name="chat_loading">Loading conversations…</string>
+    <string name="chat_retry">Retry</string>
+    <string name="chat_empty">No conversations yet. Tap + to message someone.</string>
+    <string name="chat_thread_empty">No messages yet. Say hello to %1$s.</string>
+
+    <!-- Sender name shown on our own messages, in place of the username. -->
+    <string name="chat_sender_self">You</string>
+    <!-- Accessibility label for the long-press that seeds a reply. -->
+    <string name="chat_reply_to">Reply to %1$s</string>
+
+    <string name="chat_message_placeholder">Message</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_cancel">Cancel</string>
+    <string name="chat_username_label">Username</string>
+    <string name="chat_message_label">Message</string>
+
+    <!-- Composer validation and failures. -->
+    <string name="chat_error_enter_username">Enter a username.</string>
+    <string name="chat_error_enter_message">Enter a message.</string>
+    <string name="chat_error_send_failed">Couldn\'t send message.</string>
+    <string name="chat_error_load_failed">Couldn\'t load conversations.</string>
+
+</resources>

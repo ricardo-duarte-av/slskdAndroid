@@ -2,10 +2,14 @@ package com.slskdandroid.feature.downloads.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.slskdandroid.core.common.DefaultDispatcher
 import com.slskdandroid.core.data.DownloadsRepository
+import com.slskdandroid.core.designsystem.component.UiText
+import com.slskdandroid.core.designsystem.component.toUiText
 import com.slskdandroid.core.model.Download
 import com.slskdandroid.core.model.DownloadState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -23,6 +28,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(
     private val downloadsRepository: DownloadsRepository,
+    @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     // Latest list, cached for action handlers. Updated only while the screen is subscribed (the
@@ -35,7 +41,7 @@ class DownloadsViewModel @Inject constructor(
     private val loadResult: Flow<LoadResult> = downloadsRepository.downloads()
         .onEach { downloads.value = it }
         .map<List<Download>, LoadResult> { LoadResult.Data(it) }
-        .catch { emit(LoadResult.Failure(it.message ?: "Couldn't load downloads")) }
+        .catch { emit(LoadResult.Failure(it.toUiText(R.string.downloads_load_failed))) }
 
     val uiState: StateFlow<DownloadsUiState> =
         combine(
@@ -54,15 +60,19 @@ class DownloadsViewModel @Inject constructor(
                 is LoadResult.Failure ->
                     DownloadsUiState(LoadState.Error(result.message), emptyList(), selected, collapsedU, collapsedD)
             }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = DownloadsUiState.Initial,
-        )
+        }
+            // The repository polls once a second and this regroups the whole list (peer →
+            // directory → file) each time; keep it off the main thread.
+            .flowOn(defaultDispatcher)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = DownloadsUiState.Initial,
+            )
 
     private sealed interface LoadResult {
         data class Data(val downloads: List<Download>) : LoadResult
-        data class Failure(val message: String) : LoadResult
+        data class Failure(val message: UiText) : LoadResult
     }
 
     fun onAction(action: DownloadsAction) {

@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Bare window theme used before Compose takes over; the real UI theme is
-         SlskdTheme (Material 3 Expressive) applied in Compose. -->
+         SlskdTheme (Material 3 Expressive) applied in Compose.
+
+         There is a -night variant of this file. Without it the parent is light-locked and the
+         window flashes white on every cold start under the system dark theme, before the first
+         Compose frame lands. The app has no AppCompat dependency, so this uses the framework
+         themes and lets the -night resource qualifier select the dark parent (system dark theme
+         is API 29+; below that the light parent is the correct answer anyway). -->
     <style name="Theme.SlskdAndroid" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>

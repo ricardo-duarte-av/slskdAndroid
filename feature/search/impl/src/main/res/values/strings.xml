@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Search list -->
+    <string name="search_title">Search</string>
+    <string name="search_query_label">What are you looking for?</string>
+    <string name="search_action">Search</string>
+    <string name="search_loading">Loading searches…</string>
+    <string name="search_empty">No searches yet. Start one above.</string>
+    <string name="search_load_failed">Couldn\'t load searches</string>
+    <string name="search_delete">Delete search</string>
+    <string name="search_status_searching">Searching…</string>
+    <string name="search_status_completed">Completed</string>
+
+    <!-- Search list meta line, assembled from these parts. -->
+    <plurals name="search_meta_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="search_meta_locked">%1$d locked</string>
+    <plurals name="search_meta_responses">
+        <item quantity="one">%1$d response</item>
+        <item quantity="other">%1$d responses</item>
+    </plurals>
+
+    <!-- Search detail -->
+    <string name="search_detail_back">Back</string>
+    <string name="search_detail_results">Results</string>
+    <string name="search_detail_loading">Loading results…</string>
+    <string name="search_detail_load_failed">Couldn\'t load results</string>
+    <string name="search_detail_searching">Searching…</string>
+    <string name="search_detail_no_results">No matching results.</string>
+
+    <!-- Selection bar -->
+    <plurals name="search_selected_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="search_selection_summary">%1$s · %2$s</string>
+    <string name="search_clear">Clear</string>
+    <string name="search_download_selected">Download selected</string>
+
+    <!-- Options panel -->
+    <string name="search_hide_locked">Hide locked results</string>
+    <string name="search_hide_no_free_slots">Hide results with no free slots</string>
+    <string name="search_fold_results">Fold results</string>
+    <string name="search_filter_label">Filter</string>
+    <string name="search_clear_filter">Clear filter</string>
+    <string name="search_sort_upload_speed">Upload Speed (Fastest to Slowest)</string>
+    <string name="search_sort_queue_depth">Queue Depth (Least to Most)</string>
+
+    <!-- Peer / folder / file cards -->
+    <string name="search_expand">Expand</string>
+    <string name="search_collapse">Collapse</string>
+    <string name="search_expand_folder">Expand folder</string>
+    <string name="search_collapse_folder">Collapse folder</string>
+    <string name="search_expand_directory">Expand directory</string>
+    <string name="search_collapse_directory">Collapse directory</string>
+    <string name="search_select_all_in_folder">Select all files in folder</string>
+    <string name="search_deselect_all_in_folder">Deselect all files in folder</string>
+    <string name="search_more_actions_for">More actions for %1$s</string>
+    <string name="search_info">Info</string>
+    <string name="search_browse_user">Browse user</string>
+    <string name="search_chat">Chat</string>
+    <string name="search_locked">Locked</string>
+    <string name="search_download">Download</string>
+    <string name="search_directory_files">Search additional files in this directory</string>
+    <string name="search_root_directory">(root)</string>
+
+    <!-- Peer header: name · files · slot · speed · queue -->
+    <string name="search_peer_free_slot">free slot</string>
+    <string name="search_peer_no_slot">no slot</string>
+    <string name="search_peer_summary">%1$s · %2$d files · %3$s · %4$d KB/s · queue %5$d</string>
+
+    <!-- Pager -->
+    <string name="search_hidden_by_filters">%1$d hidden by filters</string>
+    <string name="search_show_more">Show %1$d more results (%2$d remaining, %3$s)</string>
+    <string name="search_all_shown">All results shown. %1$s</string>
+
+</resources>

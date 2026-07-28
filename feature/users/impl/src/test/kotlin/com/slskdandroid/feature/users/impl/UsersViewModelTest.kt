@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import com.slskdandroid.core.designsystem.component.UiText
 import org.junit.Test
 import java.io.IOException
 
@@ -51,7 +52,7 @@ class UsersViewModelTest {
 
         val state = viewModel.uiState.value
         assertTrue(state is UsersUiState.Error)
-        assertEquals("offline", (state as UsersUiState.Error).message)
+        assertEquals(UiText.Raw("offline"), (state as UsersUiState.Error).message)
     }
 
     @Test

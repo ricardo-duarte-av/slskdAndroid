@@ -56,7 +56,9 @@ class MainActivity : ComponentActivity() {
             SlskdTheme(useAccentCards = cardTintStyle == CardTintStyle.Accent) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
+                    // `surface`, not `background`: M3 de-emphasizes the background role in favour
+                    // of the surface/surfaceContainer ladder the rest of the app already uses.
+                    color = MaterialTheme.colorScheme.surface,
                 ) {
                     when (viewModel.uiState.collectAsStateWithLifecycle().value) {
                         MainUiState.Loading -> LoadingScreen()

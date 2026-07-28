@@ -4,6 +4,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -47,7 +48,12 @@ fun SlskdApp(
                     selected = selected,
                     onClick = { navController.navigateToTopLevel(destination) },
                     // Icons only — no text label. contentDescription keeps it accessible.
-                    icon = { Icon(destination.icon, contentDescription = destination.label) },
+                    icon = {
+                        Icon(
+                            destination.icon,
+                            contentDescription = stringResource(destination.labelRes),
+                        )
+                    },
                 )
             }
         },

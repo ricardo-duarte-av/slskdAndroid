@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Shared design-system components. Feature modules keep their own strings; only text that
+         ships inside a core:designsystem component belongs here. -->
+
+    <!-- SettingsActionButton: content description for the gear in every top-level app bar. -->
+    <string name="ds_settings">Settings</string>
+
+    <!-- PlaceholderScreen: shown under the title of a section that isn't built yet. -->
+    <string name="ds_coming_soon">Coming soon</string>
+
+    <!-- TransferStatusLine: single-state labels, used when every item in the group agrees. -->
+    <string name="ds_transfer_complete">Complete</string>
+    <string name="ds_transfer_queued">Queued</string>
+    <string name="ds_transfer_errored">Errored</string>
+    <string name="ds_transfer_unknown">Unknown</string>
+
+    <!-- TransferStatusLine: aggregate progress, e.g. "42%". -->
+    <string name="ds_transfer_percent">%1$d%%</string>
+
+    <!-- TransferStatusLine: per-bucket counts, joined into a mixed summary such as
+         "3 complete · 1 errored". The count leads, so these read as a tally, not a sentence. -->
+    <string name="ds_transfer_count_complete">%1$d complete</string>
+    <string name="ds_transfer_count_queued">%1$d queued</string>
+    <string name="ds_transfer_count_errored">%1$d errored</string>
+    <string name="ds_transfer_count_unknown">%1$d unknown</string>
+
+</resources>

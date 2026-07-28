@@ -1,5 +1,7 @@
 package com.slskdandroid.feature.search.impl
 
+import com.slskdandroid.core.designsystem.component.UiText
+
 import com.slskdandroid.core.model.Search
 
 /** State of the search landing screen: the new-search field plus the list of existing searches. */
@@ -16,7 +18,7 @@ data class SearchListUiState(
 sealed interface SearchesState {
     data object Loading : SearchesState
     data class Loaded(val searches: List<Search>) : SearchesState
-    data class Error(val message: String) : SearchesState
+    data class Error(val message: UiText) : SearchesState
 }
 
 sealed interface SearchListAction {

@@ -3,19 +3,27 @@ package com.slskdandroid.feature.search.impl
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.slskdandroid.core.common.DefaultDispatcher
 import com.slskdandroid.core.data.DownloadsRepository
 import com.slskdandroid.core.data.SearchProgress
 import com.slskdandroid.core.data.SearchRepository
+import com.slskdandroid.core.designsystem.component.UiText
+import com.slskdandroid.core.designsystem.component.toUiText
 import com.slskdandroid.core.model.SearchResponse
 import com.slskdandroid.core.model.SearchResultFile
 import com.slskdandroid.feature.search.api.SEARCH_ID_ARG
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -25,11 +33,16 @@ import javax.inject.Inject
 
 private const val PAGE_SIZE = 5
 
+/** Typing in the filter box shouldn't re-derive the whole result tree on every keystroke. */
+private const val FILTER_DEBOUNCE_MS = 200L
+
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class SearchDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val searchRepository: SearchRepository,
     private val downloadsRepository: DownloadsRepository,
+    @DefaultDispatcher private val defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val searchId: String = checkNotNull(savedStateHandle[SEARCH_ID_ARG])
@@ -42,19 +55,39 @@ class SearchDetailViewModel @Inject constructor(
     // server once the detail screen is off-screen.
     private val baseFlow: Flow<BaseLoad> = searchRepository.observeSearch(searchId)
         .map<SearchProgress, BaseLoad> { BaseLoad.Loaded(it.responses, it.isComplete) }
-        .catch { emit(BaseLoad.Error(it.message ?: "Couldn't load results")) }
+        .catch { emit(BaseLoad.Error(it.toUiText(R.string.search_detail_load_failed))) }
         .onStart { emit(BaseLoad.Loading) }
 
+    /**
+     * The filter text the *derivation* uses, debounced. [options] itself stays undebounced so the
+     * text field echoes keystrokes instantly; only the expensive filter/sort/group work waits.
+     * Clearing is applied immediately — an empty filter is the cheap case and should feel instant.
+     */
+    private val debouncedFilterText: Flow<String> = options
+        .map { it.filterText }
+        .distinctUntilChanged()
+        .debounce { if (it.isBlank()) 0L else FILTER_DEBOUNCE_MS }
+
     val uiState: StateFlow<SearchDetailUiState> =
-        combine(searchText, baseFlow, options, interaction) { text, baseLoad, opts, inter ->
+        combine(
+            searchText,
+            baseFlow,
+            options,
+            interaction,
+            debouncedFilterText,
+        ) { text, baseLoad, opts, inter, filterText ->
             SearchDetailUiState(
                 searchText = text,
                 options = opts,
-                phase = derivePhase(baseLoad, opts, inter),
+                phase = derivePhase(baseLoad, opts.copy(filterText = filterText), inter),
                 selectedCount = inter.selected.size,
                 selectedSizeBytes = inter.selected.values.sumOf { it.sizeBytes },
             )
-        }.stateIn(
+        }
+            // derivePhase filters, sorts and regroups every peer response — on every 2s poll and
+            // every options change. Keep that off the main thread; only the emission hops back.
+            .flowOn(defaultDispatcher)
+            .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = SearchDetailUiState("", SearchOptions.Default, Phase.Loading, 0, 0),
@@ -228,7 +261,7 @@ class SearchDetailViewModel @Inject constructor(
 
     private sealed interface BaseLoad {
         data object Loading : BaseLoad
-        data class Error(val message: String) : BaseLoad
+        data class Error(val message: UiText) : BaseLoad
         data class Loaded(val responses: List<SearchResponse>, val isComplete: Boolean) : BaseLoad
     }
 

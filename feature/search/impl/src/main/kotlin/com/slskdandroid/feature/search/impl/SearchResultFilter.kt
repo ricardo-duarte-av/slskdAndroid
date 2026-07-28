@@ -1,12 +1,14 @@
 package com.slskdandroid.feature.search.impl
 
+import androidx.annotation.StringRes
+
 import com.slskdandroid.core.model.SearchResponse
 import com.slskdandroid.core.model.SearchResultFile
 
 /** Result sort orders, matching the slskd web UI. */
-enum class ResultSort(val label: String) {
-    UploadSpeed("Upload Speed (Fastest to Slowest)"),
-    QueueDepth("Queue Depth (Least to Most)"),
+enum class ResultSort(@StringRes val labelRes: Int) {
+    UploadSpeed(R.string.search_sort_upload_speed),
+    QueueDepth(R.string.search_sort_queue_depth),
 }
 
 /**

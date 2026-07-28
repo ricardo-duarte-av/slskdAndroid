@@ -53,12 +53,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.DepthCard
+import com.slskdandroid.core.designsystem.component.asString
 import com.slskdandroid.core.model.SearchResultFile
 import kotlin.math.min
 
@@ -98,12 +104,15 @@ internal fun SearchDetailScreen(
             TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.search_detail_back),
+                        )
                     }
                 },
                 title = {
                     Text(
-                        uiState.searchText.ifBlank { "Results" },
+                        uiState.searchText.ifBlank { stringResource(R.string.search_detail_results) },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -123,9 +132,9 @@ internal fun SearchDetailScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (val phase = uiState.phase) {
-                Phase.Loading -> CenteredMessage("Loading results…")
+                Phase.Loading -> CenteredMessage(stringResource(R.string.search_detail_loading))
 
-                is Phase.Error -> CenteredMessage(phase.message, MaterialTheme.colorScheme.error)
+                is Phase.Error -> CenteredMessage(phase.message.asString(), MaterialTheme.colorScheme.error)
 
                 is Phase.Loaded -> {
                     if (!phase.isComplete) {
@@ -151,13 +160,17 @@ private fun SelectionBar(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "$count file${if (count == 1) "" else "s"} · ${formatBytes(sizeBytes)}",
+                stringResource(
+                    R.string.search_selection_summary,
+                    pluralStringResource(R.plurals.search_selected_files, count, count),
+                    formatBytes(sizeBytes),
+                ),
                 style = MaterialTheme.typography.titleSmall,
             )
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onClear) { Text("Clear") }
+            TextButton(onClick = onClear) { Text(stringResource(R.string.search_clear)) }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = onDownload) { Text("Download selected") }
+            Button(onClick = onDownload) { Text(stringResource(R.string.search_download_selected)) }
         }
     }
 }
@@ -180,7 +193,15 @@ private fun LoadedResults(
 
         if (phase.responses.isEmpty()) {
             item(key = "empty") {
-                CenteredMessage(if (phase.isComplete) "No matching results." else "Searching…")
+                CenteredMessage(
+                    stringResource(
+                        if (phase.isComplete) {
+                            R.string.search_detail_no_results
+                        } else {
+                            R.string.search_detail_searching
+                        },
+                    ),
+                )
             }
         }
 
@@ -297,20 +318,20 @@ private fun OptionsPanel(
     ) {
         SortDropdown(options.sort, onSelect = { onAction(SearchDetailAction.SetSort(it)) })
 
-        ToggleRow("Hide locked results", options.hideLocked) {
+        ToggleRow(stringResource(R.string.search_hide_locked), options.hideLocked) {
             onAction(SearchDetailAction.ToggleHideLocked)
         }
-        ToggleRow("Hide results with no free slots", options.hideNoFreeSlots) {
+        ToggleRow(stringResource(R.string.search_hide_no_free_slots), options.hideNoFreeSlots) {
             onAction(SearchDetailAction.ToggleHideNoFreeSlots)
         }
-        ToggleRow("Fold results", options.foldResults) {
+        ToggleRow(stringResource(R.string.search_fold_results), options.foldResults) {
             onAction(SearchDetailAction.ToggleFold)
         }
 
         OutlinedTextField(
             value = options.filterText,
             onValueChange = { onAction(SearchDetailAction.SetFilter(it)) },
-            label = { Text("Filter") },
+            label = { Text(stringResource(R.string.search_filter_label)) },
             placeholder = {
                 Text(FILTER_PLACEHOLDER, style = MaterialTheme.typography.bodySmall, maxLines = 2)
             },
@@ -320,7 +341,7 @@ private fun OptionsPanel(
                     IconButton(onClick = { onAction(SearchDetailAction.ClearFilter) }) {
                         Icon(
                             Icons.Filled.Clear,
-                            contentDescription = "Clear filter",
+                            contentDescription = stringResource(R.string.search_clear_filter),
                             tint = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -338,12 +359,12 @@ private fun SortDropdown(sort: ResultSort, onSelect: (ResultSort) -> Unit) {
         TextButton(onClick = { expanded = true }) {
             Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(sort.label)
+            Text(stringResource(sort.labelRes))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             ResultSort.entries.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.label) },
+                    text = { Text(stringResource(option.labelRes)) },
                     onClick = {
                         expanded = false
                         onSelect(option)
@@ -383,13 +404,24 @@ private fun PeerHeader(
     ) {
         Icon(
             imageVector = if (response.folded) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp,
-            contentDescription = if (response.folded) "Expand" else "Collapse",
+            contentDescription = stringResource(
+                if (response.folded) R.string.search_expand else R.string.search_collapse,
+            ),
             tint = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.width(4.dp))
-        val slot = if (response.hasFreeUploadSlot) "free slot" else "no slot"
+        val slot = stringResource(
+            if (response.hasFreeUploadSlot) R.string.search_peer_free_slot else R.string.search_peer_no_slot,
+        )
         Text(
-            "${response.username} · ${response.fileCount} files · $slot · ${response.uploadSpeed / 1024} KB/s · queue ${response.queueLength}",
+            stringResource(
+                R.string.search_peer_summary,
+                response.username,
+                response.fileCount,
+                slot,
+                response.uploadSpeed / 1024,
+                response.queueLength,
+            ),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
@@ -411,25 +443,28 @@ private fun PeerOverflowMenu(
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "More actions for $username")
+            Icon(
+                Icons.Filled.MoreVert,
+                contentDescription = stringResource(R.string.search_more_actions_for, username),
+            )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("Info") },
+                text = { Text(stringResource(R.string.search_info)) },
                 onClick = {
                     expanded = false
                     onUserInfo(username)
                 },
             )
             DropdownMenuItem(
-                text = { Text("Browse user") },
+                text = { Text(stringResource(R.string.search_browse_user)) },
                 onClick = {
                     expanded = false
                     onBrowseUser(username)
                 },
             )
             DropdownMenuItem(
-                text = { Text("Chat") },
+                text = { Text(stringResource(R.string.search_chat)) },
                 onClick = {
                     expanded = false
                     onChatUser(username)
@@ -448,34 +483,50 @@ private fun DirectoryHeader(
     modifier: Modifier = Modifier,
 ) {
     // Tap toggles the folder's collapse; long-press selects/deselects all its files.
+    val selectAll = dir.selection != TriState.All
+    val selectionLabel = stringResource(
+        if (selectAll) R.string.search_select_all_in_folder else R.string.search_deselect_all_in_folder,
+    )
+    val setSelection = {
+        onAction(
+            SearchDetailAction.SetDirectorySelection(
+                username = username,
+                files = dir.files.map { it.file },
+                selected = selectAll,
+            ),
+        )
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { onAction(SearchDetailAction.ToggleDirectoryCollapse(username, dir.directory)) },
-                onLongClick = {
-                    onAction(
-                        SearchDetailAction.SetDirectorySelection(
-                            username = username,
-                            files = dir.files.map { it.file },
-                            selected = dir.selection != TriState.All,
-                        ),
-                    )
-                },
+                onClickLabel = stringResource(
+                    if (dir.collapsed) R.string.search_expand_folder else R.string.search_collapse_folder,
+                ),
+                onLongClick = setSelection,
+                onLongClickLabel = selectionLabel,
             )
+            // Also expose the long-press as a named action, so it's reachable from TalkBack's
+            // actions menu rather than only as an unlabelled double-tap-and-hold.
+            .semantics {
+                customActions = listOf(CustomAccessibilityAction(selectionLabel) { setSelection(); true })
+            }
             .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = if (dir.collapsed) Icons.Filled.KeyboardArrowDown else Icons.Filled.KeyboardArrowUp,
-            contentDescription = if (dir.collapsed) "Expand directory" else "Collapse directory",
+            contentDescription = stringResource(
+                if (dir.collapsed) R.string.search_expand_directory else R.string.search_collapse_directory,
+            ),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(4.dp))
         // No ellipsis: the full remote path scrolls horizontally so long paths stay readable.
         Text(
-            dir.directory.ifBlank { "(root)" },
+            dir.directory.ifBlank { stringResource(R.string.search_root_directory) },
             style = MaterialTheme.typography.labelMedium,
             color = if (dir.selection == TriState.None) {
                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -495,7 +546,7 @@ private fun DirectoryHeader(
             ) {
                 Icon(
                     Icons.Filled.Search,
-                    contentDescription = "Search additional files in this directory",
+                    contentDescription = stringResource(R.string.search_directory_files),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -522,7 +573,7 @@ private fun FileRow(
         if (file.isLocked) {
             Icon(
                 Icons.Filled.Lock,
-                contentDescription = "Locked",
+                contentDescription = stringResource(R.string.search_locked),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(16.dp),
             )
@@ -548,7 +599,7 @@ private fun FileRow(
             onClick = { onAction(SearchDetailAction.Download(username, file)) },
             enabled = !file.isLocked,
         ) {
-            Icon(Icons.Filled.Download, contentDescription = "Download")
+            Icon(Icons.Filled.Download, contentDescription = stringResource(R.string.search_download))
         }
     }
 }
@@ -559,13 +610,20 @@ private fun Pager(
     filteredCount: Int,
     onShowMore: () -> Unit,
 ) {
-    val hidden = "$filteredCount hidden by filters"
+    val hidden = stringResource(R.string.search_hidden_by_filters, filteredCount)
     when {
         remainingCount > 0 -> Button(
             onClick = onShowMore,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
-            Text("Show ${min(remainingCount, PAGE_SIZE)} more results ($remainingCount remaining, $hidden)")
+            Text(
+                stringResource(
+                    R.string.search_show_more,
+                    min(remainingCount, PAGE_SIZE),
+                    remainingCount,
+                    hidden,
+                ),
+            )
         }
 
         filteredCount > 0 -> Button(
@@ -573,7 +631,7 @@ private fun Pager(
             enabled = false,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
-            Text("All results shown. $hidden")
+            Text(stringResource(R.string.search_all_shown, hidden))
         }
     }
 }
