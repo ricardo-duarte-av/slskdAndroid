@@ -51,14 +51,16 @@ The app is meaningless without matching slskd's contract. When implementing netw
 
 Use WebFetch on the above (or the live Swagger JSON of a configured instance) to confirm exact paths, request/response shapes, and hub method names before writing networking code — these change between slskd releases.
 
-### Live dev server (temporary)
+### Checking real HTTP responses
 
-A running slskd instance is available for checking real HTTP responses during development:
+A live slskd instance is the only reliable way to confirm response shapes. **Never write a
+server address or API key into this file, the repo, or a workflow** — they belong in the
+environment or in repo secrets. Ask the user for a base URL and key when you need one, and
+pass them through the shell:
 
-- **Base URL:** `https://slsk.aguiarvieira.pt/`
-- **API key:** `abcdefghijklmnopqrstuvwxyz` (sent in the `X-API-Key` header)
-
-Example: `curl -H "X-API-Key: abcdefghijklmnopqrstuvwxyz" https://slsk.aguiarvieira.pt/api/v0/application`. This key is rotated when not in use — treat it as throwaway, not a secret to protect.
+```bash
+curl -H "X-API-Key: $SLSKD_API_KEY" "$SLSKD_URL/api/v0/application"
+```
 
 ## Architecture
 
