@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -76,6 +77,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
+import com.slskdandroid.core.designsystem.testing.SlskdTestTags
 import com.slskdandroid.core.model.Conversation
 import com.slskdandroid.core.model.PrivateMessage
 import java.time.Instant
@@ -212,10 +214,12 @@ private fun ConversationRow(conversation: Conversation, avatar: ByteArray?, onCl
                 Badge { Text(conversation.unreadCount.toString()) }
             }
         },
-        modifier = Modifier.clickable(
-            onClick = onClick,
-            onClickLabel = stringResource(R.string.chat_open_conversation),
-        ),
+        modifier = Modifier
+            .testTag(SlskdTestTags.CONVERSATION_ROW)
+            .clickable(
+                onClick = onClick,
+                onClickLabel = stringResource(R.string.chat_open_conversation),
+            ),
     ) {
         Text(
             conversation.username,

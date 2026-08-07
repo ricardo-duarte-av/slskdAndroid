@@ -120,6 +120,33 @@ done
 Write the result to `local.properties`. CI doesn't use this file — the workflow installs the SDK
 itself and `ANDROID_HOME` is already set there.
 
+## Screenshots
+
+`.github/workflows/screenshots.yml` (**manual only**, `workflow_dispatch`) boots an API 37 emulator
+by hand, runs `app/src/androidTest/kotlin/com/slskdandroid/ScreenshotTest.kt` against a **real slskd
+instance**, pulls the PNGs off the device, writes half-scale JPGs to `screenshots/`, regenerates the
+README gallery via `tools/update_readme_screenshots.py`, and commits both.
+
+- **Secrets:** `SCREENSHOT_SERVER_URL`, `SCREENSHOT_API_KEY`. Never hardcode either (see the
+  "Checking real HTTP responses" note above). Inputs `query` (default `zelda flac` — a term that
+  reliably returns live peers) and `room` (default `slskd`) tune the content-dependent shots.
+- **This is the repo's only instrumented test**, and it is not part of `ci.yml` — it needs an
+  emulator, network, and credentials. `AndroidApplicationConventionPlugin` sets
+  `testInstrumentationRunner` solely for it (the *feature* plugin sets its own; `app` doesn't apply
+  that plugin, so it wasn't inherited).
+- **Waits key off `SlskdTestTags`** (`core:designsystem`), not screen titles: every screen renders
+  its chrome instantly, so a title match captures a spinner. Tags live in `core:designsystem`
+  because `:app`'s androidTest can't see a feature module's `internal` declarations. When you add a
+  screen worth capturing, tag its list row there rather than inventing a per-feature constant.
+- **Side effects on the target server are deliberate and limited**: it starts a search, and joins
+  `room` if not already a member. It never queues a download or sends a message — so the
+  Downloads/Uploads shots show whatever the server already has, empty state included.
+- **Full-device capture** (`UiAutomation.takeScreenshot()`), not `onRoot().captureToImage()`:
+  dropdowns, dialogs and modal sheets are separate windows a Compose-root capture would miss.
+- The workflow zeroes `animator_duration_scale` before instrumenting. That's not only cosmetic —
+  Compose reads it through `MotionDurationScale`, and without it the wavy/indeterminate progress
+  indicators keep the UI perpetually non-idle and hang `performClick`'s internal `waitForIdle`.
+
 ## Release, signing & CI
 
 Full details live in `RELEASE.md`; the essentials:

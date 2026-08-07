@@ -58,6 +58,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.res.stringResource
@@ -76,6 +77,7 @@ import com.slskdandroid.core.designsystem.component.formatDurationLocalized
 import com.slskdandroid.core.designsystem.component.formatBytes
 import com.slskdandroid.core.designsystem.component.formatBitRateLocalized
 import com.slskdandroid.core.designsystem.component.asString
+import com.slskdandroid.core.designsystem.testing.SlskdTestTags
 import com.slskdandroid.core.model.SearchResultFile
 import kotlin.math.min
 
@@ -260,7 +262,10 @@ private fun PeerCard(
 ) {
     DepthCard(
         depth = 0,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(SlskdTestTags.SEARCH_PEER_CARD)
+            .padding(horizontal = 12.dp),
     ) {
         Column(modifier = Modifier.animateContentSize()) {
             PeerHeader(

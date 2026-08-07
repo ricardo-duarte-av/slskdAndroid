@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.res.pluralStringResource
@@ -73,6 +74,7 @@ import com.slskdandroid.core.designsystem.component.TransferPhase
 import com.slskdandroid.core.designsystem.component.TransferStatusLine
 import com.slskdandroid.core.designsystem.component.nestedCardColor
 import com.slskdandroid.core.designsystem.component.transferStatusOf
+import com.slskdandroid.core.designsystem.testing.SlskdTestTags
 import com.slskdandroid.core.model.Upload
 import com.slskdandroid.core.model.UploadState
 import kotlinx.coroutines.flow.Flow
@@ -323,7 +325,13 @@ private fun UserCard(
     modifier: Modifier = Modifier,
 ) {
     val collapsed = user.username in uiState.collapsedUsers
-    DepthCard(depth = 0, modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+    DepthCard(
+        depth = 0,
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(SlskdTestTags.TRANSFER_USER_CARD)
+            .padding(horizontal = 12.dp),
+    ) {
         Column(modifier = Modifier.animateContentSize()) {
             PeerHeader(
                 username = user.username,

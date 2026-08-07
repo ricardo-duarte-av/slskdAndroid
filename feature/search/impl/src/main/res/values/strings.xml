@@ -4,7 +4,10 @@
     <!-- Search list -->
     <string name="search_title">Search</string>
     <string name="search_query_label">What are you looking for?</string>
-    <string name="search_action">Search</string>
+    <!-- Content description for the submit icon inside the query field. Deliberately not just
+         "Search": the Search *tab* in the navigation suite is icon-only and already carries that
+         label, so two unrelated controls on the same screen announced identically. -->
+    <string name="search_action">Start search</string>
     <string name="search_loading">Loading searches…</string>
     <string name="search_empty">No searches yet. Start one above.</string>
     <string name="search_load_failed">Couldn\'t load searches</string>

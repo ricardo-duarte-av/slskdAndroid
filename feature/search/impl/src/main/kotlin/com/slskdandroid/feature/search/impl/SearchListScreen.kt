@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
+import com.slskdandroid.core.designsystem.testing.SlskdTestTags
 import com.slskdandroid.core.model.Search
 
 @Composable
@@ -152,6 +154,9 @@ private fun SearchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // Content-arrival signal for the ScreenshotTest: the "Search" title renders instantly,
+            // so only a row proves the searches actually loaded.
+            .testTag(SlskdTestTags.SEARCH_ROW)
             .clickable(onClick = onOpen, onClickLabel = stringResource(R.string.search_open_results))
             .padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,

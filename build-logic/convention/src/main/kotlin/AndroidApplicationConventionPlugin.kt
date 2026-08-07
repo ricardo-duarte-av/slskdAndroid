@@ -12,6 +12,10 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             extensions.configure<ApplicationExtension> {
                 configureKotlinAndroid(this)
                 defaultConfig.targetSdk = 37
+                // Needed by the `screenshots` workflow, which drives :app's androidTest APK with
+                // `am instrument`. The feature convention plugin sets this for libraries; the
+                // application DSL has its own defaultConfig and doesn't inherit it.
+                defaultConfig.testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             }
         }
     }

@@ -1,0 +1,298 @@
+name: Screenshots
+
+# Manual only. Boots an Android 17 (API 37) emulator, runs the ScreenshotTest instrumentation
+# (real connection to a real slskd instance), pulls the captured PNGs off the device, converts them
+# to JPGs under screenshots/, refreshes the README gallery and commits the lot.
+#
+# NB: API 37 only ships 16 KB-page ("ps16k") system images and uses a versioned package name
+# (android-37.0 / android-37.1), which reactivecircus/android-emulator-runner can't express — so
+# the emulator is created and booted by hand below.
+on:
+  workflow_dispatch:
+    inputs:
+      system-image:
+        description: "Emulator system image package"
+        required: false
+        default: "system-images;android-37.0;google_apis_ps16k;x86_64"
+      device:
+        description: "avdmanager device profile"
+        required: false
+        default: "pixel_6"
+      query:
+        description: "Search term used for the search screenshots (needs live peers)"
+        required: false
+        default: "zelda flac"
+      room:
+        description: "Room opened for the room-chat screenshot (joined if not already a member)"
+        required: false
+        default: "slskd"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+  SYSTEM_IMAGE: ${{ github.event.inputs.system-image || 'system-images;android-37.0;google_apis_ps16k;x86_64' }}
+  DEVICE: ${{ github.event.inputs.device || 'pixel_6' }}
+  QUERY: ${{ github.event.inputs.query || 'zelda flac' }}
+  ROOM: ${{ github.event.inputs.room || 'slskd' }}
+  # slskd server + API key for the run. Supplied entirely via repo secrets (Settings → Secrets and
+  # variables → Actions) so no server address or key lives in the repo. Both are required — the job
+  # fails fast below if either is unset.
+  SERVER_URL: ${{ secrets.SCREENSHOT_SERVER_URL }}
+  API_KEY: ${{ secrets.SCREENSHOT_API_KEY }}
+  # Debug build carries the .debug applicationId suffix — its internal files dir is where the test
+  # writes the PNGs.
+  APP_ID: pt.aguiarvieira.androidslskd.debug
+
+jobs:
+  screenshots:
+    name: Capture screenshots (Android 17)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required secrets
+        run: |
+          : "${SERVER_URL:?SCREENSHOT_SERVER_URL secret is not set}"
+          : "${API_KEY:?SCREENSHOT_API_KEY secret is not set}"
+          echo "Credentials present."
+
+      # The runner image no longer ships ImageMagick, so the PNG → JPG conversion below needs it
+      # installed explicitly. Done early so a failure here doesn't waste the emulator run.
+      - name: Install ImageMagick
+        run: |
+          set -euo pipefail
+          if command -v magick >/dev/null 2>&1 || command -v convert >/dev/null 2>&1; then
+            echo "ImageMagick already present."; exit 0
+          fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq imagemagick
+
+      # KVM is required for a hardware-accelerated (fast, non-flaky) emulator on Linux.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Pin the AVD location so avdmanager (which creates it) and the emulator (which reads it)
+      # agree. Without this they can disagree — avdmanager writing under the newer ANDROID_USER_HOME
+      # while the emulator still looks in $HOME/.android/avd — and the emulator then reports
+      # "Unknown AVD name [ci]".
+      - name: Configure AVD location
+        run: echo "ANDROID_AVD_HOME=$HOME/.android/avd" >> "$GITHUB_ENV"
+
+      - name: Install Android 37 SDK, emulator and system image
+        run: |
+          set -euo pipefail
+          # The runner's bundled sdkmanager is too old to see API 37, so fetch a recent
+          # command-line-tools build first (same approach as ci.yml).
+          curl -fsSL "https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip" -o /tmp/clt.zip
+          rm -rf "$ANDROID_HOME/cmdline-tools/latest"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          unzip -q /tmp/clt.zip -d /tmp/clt
+          mv /tmp/clt/cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+          "$SDKM" "platform-tools" "emulator" \
+                  "platforms;android-37.0" "build-tools;37.0.0" \
+                  "$SYSTEM_IMAGE"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Create AVD
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force --name ci --package "$SYSTEM_IMAGE" --device "$DEVICE"
+          # Verify the emulator can actually see it before we try to boot.
+          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME"
+          ls -la "$ANDROID_AVD_HOME" || true
+          if ! "$ANDROID_HOME/emulator/emulator" -list-avds | grep -qx ci; then
+            echo "::error::AVD 'ci' not visible to the emulator after creation"
+            "$ANDROID_HOME/emulator/emulator" -list-avds || true
+            exit 1
+          fi
+
+      - name: Boot emulator
+        timeout-minutes: 20
+        run: |
+          # Note: no `set -e` — we handle failures explicitly so we can dump logs first.
+          set -uo pipefail
+          EMU="$ANDROID_HOME/emulator/emulator"
+          nohup "$EMU" -avd ci \
+            -no-window -no-snapshot -no-boot-anim -noaudio \
+            -gpu swiftshader_indirect -camera-back none -accel on -verbose \
+            > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          EMU_PID=$!
+          echo "emulator pid=$EMU_PID"
+          # Stream the emulator log into the job output so a hang is diagnosable live.
+          tail -F "$RUNNER_TEMP/emulator.log" & TAIL_PID=$!
+
+          # 1) Bounded wait for the device to register with adb (an unbounded wait-for-device is
+          #    what silently hangs forever when the emulator dies on launch).
+          if ! timeout 180 adb wait-for-device; then
+            echo "::error::emulator never registered with adb within 180s"
+            echo "--- emulator.log ---"; cat "$RUNNER_TEMP/emulator.log" || true
+            adb devices || true
+            exit 1
+          fi
+
+          # 2) Bounded wait for full boot (120 * 5s = 600s), with progress + liveness check.
+          booted=0
+          for i in $(seq 1 120); do
+            if ! kill -0 "$EMU_PID" 2>/dev/null; then
+              echo "::error::emulator process exited during boot"
+              break
+            fi
+            state=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            if [ "$state" = "1" ]; then booted=1; break; fi
+            echo "[boot wait $((i * 5))s] sys.boot_completed='$state'"
+            sleep 5
+          done
+
+          kill "$TAIL_PID" 2>/dev/null || true
+          if [ "$booted" != "1" ]; then
+            echo "::error::emulator failed to finish booting"
+            echo "--- emulator.log (tail 200) ---"; tail -n 200 "$RUNNER_TEMP/emulator.log" || true
+            adb devices || true
+            exit 1
+          fi
+
+          adb shell input keyevent 82 || true   # dismiss lock screen
+          # Static UI: kill system animations. This also matters for the test itself — Compose reads
+          # the animator duration scale via MotionDurationScale, so zeroing it stops indeterminate
+          # progress indicators keeping the UI perpetually non-idle.
+          adb shell settings put global window_animation_scale 0 || true
+          adb shell settings put global transition_animation_scale 0 || true
+          adb shell settings put global animator_duration_scale 0 || true
+          echo "Emulator booted."
+
+      - name: Build APKs
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+
+      - name: Run screenshot test
+        timeout-minutes: 25
+        run: |
+          set -uo pipefail
+          # Install by hand and drive with `am instrument`. The Gradle connected-test task
+          # uninstalls the app when it finishes, which deletes the screenshots before we can pull
+          # them; a manual install leaves the app (and its files) in place.
+          adb install -r -g app/build/outputs/apk/debug/app-debug.apk
+          adb install -r -g app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          # Guarantee first-run state so the connection-setup screen is captured. (This also drops
+          # the runtime permission grants; the test's GrantPermissionRule re-grants what it needs.)
+          adb shell pm clear "$APP_ID"
+
+          adb logcat -c || true
+          adb logcat '*:S' ScreenshotTest:I AndroidRuntime:E > "$RUNNER_TEMP/screenshot-test.log" &
+
+          # `adb shell` re-parses the command on the device, so values with spaces (e.g. the default
+          # "zelda flac") must be single-quoted for the *device* shell, not just the host one.
+          adb shell am instrument -w -r \
+            -e class com.slskdandroid.ScreenshotTest \
+            -e serverUrl "'$SERVER_URL'" \
+            -e apiKey "'$API_KEY'" \
+            -e query "'$QUERY'" \
+            -e room "'$ROOM'" \
+            "${APP_ID}.test/androidx.test.runner.AndroidJUnitRunner" \
+            | tee "$RUNNER_TEMP/instrument.out"
+
+          echo "=== ScreenshotTest log ==="
+          cat "$RUNNER_TEMP/screenshot-test.log" || true
+
+          # am instrument exits 0 even when the test process crashes/fails — treat the standard
+          # failure markers as fatal.
+          if grep -qE 'INSTRUMENTATION_RESULT: shortMsg|FAILURES!!!|Process crashed|INSTRUMENTATION_CODE: 0' "$RUNNER_TEMP/instrument.out"; then
+            echo "::error::instrumentation reported a failure"; exit 1
+          fi
+
+      - name: Pull screenshots off device
+        run: |
+          set -uo pipefail
+          rm -rf pulled && mkdir -p pulled
+          # The test writes to the app's internal files dir. The google_apis (non-Play) image is
+          # rootable, so become root and read it directly.
+          adb root
+          adb wait-for-device
+          for i in $(seq 1 10); do adb shell true 2>/dev/null && break; sleep 2; done
+          adb pull "/data/user/0/${APP_ID}/files/screenshots/." pulled/ \
+            || adb pull "/data/data/${APP_ID}/files/screenshots/." pulled/ \
+            || true
+          ls -la pulled || true
+
+      - name: Stage screenshots
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          pngs=(pulled/*.png)
+          if [ ${#pngs[@]} -eq 0 ]; then
+            echo "No screenshots were produced — see the test log above." >&2
+            exit 1
+          fi
+          mkdir -p screenshots
+          # Committed as half-scale JPGs, not full-res PNGs: these are regenerated on every run, so
+          # a ~3 MB PNG set would accumulate in git history a copy at a time. The full-resolution
+          # PNGs are kept as a build artifact instead (uploaded below).
+          # ImageMagick 7 dropped the `convert` alias; prefer `magick` when present.
+          IM=$(command -v magick || command -v convert)
+          for png in "${pngs[@]}"; do
+            name=$(basename "$png" .png)
+            "$IM" "$png" -resize 50% -quality 88 "screenshots/${name}.jpg"
+          done
+          ls -la screenshots
+
+      - name: Refresh README gallery
+        run: |
+          set -euo pipefail
+          python3 tools/update_readme_screenshots.py
+
+      - name: Upload full-resolution screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-png
+          path: pulled/*.png
+          if-no-files-found: warn
+
+      - name: Upload emulator + test logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-logs
+          path: |
+            ${{ runner.temp }}/emulator.log
+            ${{ runner.temp }}/screenshot-test.log
+          if-no-files-found: ignore
+
+      - name: Commit updated screenshots
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add screenshots README.md
+          if git diff --cached --quiet; then
+            echo "No screenshot changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: regenerate screenshots (Android 17) [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
