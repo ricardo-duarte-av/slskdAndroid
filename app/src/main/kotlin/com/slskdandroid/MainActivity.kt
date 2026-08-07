@@ -30,7 +30,7 @@ import com.slskdandroid.core.model.CardTintStyle
 import com.slskdandroid.feature.connection.api.CONNECTION_SETUP_ROUTE
 import com.slskdandroid.feature.connection.impl.connectionSetupScreen
 import com.slskdandroid.navigation.SlskdApp
-import com.slskdandroid.notifications.NotificationServiceController
+import com.slskdandroid.notifications.NotificationWorkScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        observeNotificationService()
+        observeNotificationWork()
         setContent {
             val cardTintStyle = viewModel.cardTintStyle.collectAsStateWithLifecycle().value
             SlskdTheme(useAccentCards = cardTintStyle == CardTintStyle.Accent) {
@@ -71,21 +71,22 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Runs the message-polling foreground service exactly when the app is both configured and has
-     * notifications enabled. Requests POST_NOTIFICATIONS (Android 13+) the moment it's turned on so
-     * the notifications can actually be shown.
+     * Keeps the periodic message-polling work scheduled exactly when the app is both configured and
+     * has notifications enabled, at the user's chosen interval. Requests POST_NOTIFICATIONS
+     * (Android 13+) the moment it's turned on so the notifications can actually be shown.
      */
-    private fun observeNotificationService() {
+    private fun observeNotificationWork() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // Emits the poll interval while polling should run, null while it shouldn't.
                 combine(viewModel.uiState, settingsRepository.notificationSettings) { main, settings ->
-                    main == MainUiState.Configured && settings.enabled
-                }.distinctUntilChanged().collect { shouldRun ->
-                    if (shouldRun) {
+                    settings.checkIntervalSeconds.takeIf { main == MainUiState.Configured && settings.enabled }
+                }.distinctUntilChanged().collect { intervalSeconds ->
+                    if (intervalSeconds != null) {
                         ensureNotificationPermission()
-                        NotificationServiceController.start(this@MainActivity)
+                        NotificationWorkScheduler.schedule(this@MainActivity, intervalSeconds)
                     } else {
-                        NotificationServiceController.stop(this@MainActivity)
+                        NotificationWorkScheduler.cancel(this@MainActivity)
                     }
                 }
             }

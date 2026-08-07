@@ -51,14 +51,16 @@ The app is meaningless without matching slskd's contract. When implementing netw
 
 Use WebFetch on the above (or the live Swagger JSON of a configured instance) to confirm exact paths, request/response shapes, and hub method names before writing networking code — these change between slskd releases.
 
-### Live dev server (temporary)
+### Checking real HTTP responses
 
-A running slskd instance is available for checking real HTTP responses during development:
+A live slskd instance is the only reliable way to confirm response shapes. **Never write a
+server address or API key into this file, the repo, or a workflow** — they belong in the
+environment or in repo secrets. Ask the user for a base URL and key when you need one, and
+pass them through the shell:
 
-- **Base URL:** `https://slsk.aguiarvieira.pt/`
-- **API key:** `abcdefghijklmnopqrstuvwxyz` (sent in the `X-API-Key` header)
-
-Example: `curl -H "X-API-Key: abcdefghijklmnopqrstuvwxyz" https://slsk.aguiarvieira.pt/api/v0/application`. This key is rotated when not in use — treat it as throwaway, not a secret to protect.
+```bash
+curl -H "X-API-Key: $SLSKD_API_KEY" "$SLSKD_URL/api/v0/application"
+```
 
 ## Architecture
 
@@ -67,7 +69,11 @@ Follow Google's official architecture guidance, as demonstrated by [NowInAndroid
 - **Offline-first**: a local source of truth (Room/DataStore) where it makes sense (e.g. saved searches, transfer history, server config). Live transfer/search state may be ephemeral and SignalR-driven rather than persisted — decide per feature.
 - **Unidirectional data flow**: events down, immutable state up via Kotlin `Flow`/`StateFlow`.
 - **Module layout**: `app/` (navigation + scaffolding), `feature:<name>:{api,impl}`, and `core:*`. Currently present: `app`, `core:{model,common,designsystem,datastore,network,data}`, and `feature:{search,connection,downloads,uploads,rooms,chat,users,browse,settings}:{api,impl}`. Add `core:database`/`core:ui` as features need them.
-- **Settings & background notifications**: `feature:settings` is a non-tab screen reachable from every top-level screen's top-right gear (`SettingsActionButton` in `core:designsystem`, threaded as an `onSettings` callback through each `NavGraphBuilder.<x>Screen()`). It toggles background message notifications and the poll interval (persisted via `SettingsRepository`/`NotificationSettingsDataSource`, defaults: off, 300s), plus a **Card style** appearance choice (`CardTintStyle` Neutral/Accent, persisted via `AppearanceSettingsDataSource`) that `MainViewModel` feeds into `SlskdTheme(useAccentCards=…)` — provided as the `LocalUseAccentCards` CompositionLocal in `core:designsystem` and read by `nestedCardColor` so Search/Downloads/Uploads restyle together. When enabled + configured, `MainActivity` runs `app/notifications/NotificationService` — a `dataSync` foreground service that calls `core:data`'s `MessageNotifier.scanOnce()` on the interval. slskd pushes nothing, so this pull loop polls conversations + joined-room messages and posts `MessagingStyle` notifications for new incoming DMs (with the peer's avatar) and room messages mentioning our own username (from `GET /api/v0/application`'s `user.username`). Dedup is in-memory watermark-based: the first scan after process start silently baselines, later scans only notify newer messages. `POST_NOTIFICATIONS` is requested from `MainActivity`. (Not yet reboot-persistent — no `BOOT_COMPLETED` receiver; `dataSync` has Android's cumulative runtime cap.)
+- **Settings & background notifications**: `feature:settings` is a non-tab screen reachable from every top-level screen's top-right gear (`SettingsActionButton` in `core:designsystem`, threaded as an `onSettings` callback through each `NavGraphBuilder.<x>Screen()`). It toggles background message notifications and the poll interval (persisted via `SettingsRepository`/`NotificationSettingsDataSource`, defaults: off, 15 min — the slider's floor, see below), plus a **Card style** appearance choice (`CardTintStyle` Neutral/Accent, persisted via `AppearanceSettingsDataSource`) that `MainViewModel` feeds into `SlskdTheme(useAccentCards=…)` — provided as the `LocalUseAccentCards` CompositionLocal in `core:designsystem` and read by `nestedCardColor` so Search/Downloads/Uploads restyle together. When enabled + configured, `MainActivity` schedules `app/notifications/MessageCheckWorker` via `NotificationWorkScheduler` — **WorkManager periodic work** (unique name `slskd-message-check`, `ExistingPeriodicWorkPolicy.UPDATE`, network-connected constraint) that calls `core:data`'s `MessageNotifier.scanOnce()`. slskd pushes nothing, so this pull loop polls conversations + joined-room messages and posts `MessagingStyle` notifications for new incoming DMs (with the peer's avatar) and room messages mentioning our own username (from `GET /api/v0/application`'s `user.username`). `POST_NOTIFICATIONS` is requested from `MainActivity`.
+  - **Why WorkManager and not a foreground service:** the poll used to run in a `dataSync` foreground service, which required `FOREGROUND_SERVICE`/`FOREGROUND_SERVICE_DATA_SYNC`, showed a permanent notification, didn't survive reboot, and hits Android 15's cumulative `dataSync` runtime cap. WorkManager needs **no runtime permission** (`work-runtime`'s own manifest merges in a normal, non-prompting `RECEIVE_BOOT_COMPLETED` plus its `RescheduleReceiver`/`MyPackageReplaced` receivers — so the merged APK does list that permission even though `app/src/main/AndroidManifest.xml` doesn't declare it), is reboot- and process-death-persistent, and is the platform-sanctioned way to do this. The price is timing: periodic work has a **15-minute minimum period** and the system may defer it further (Doze/batching), so `NotificationSettings.MIN_INTERVAL_SECONDS` is 900 and `NotificationWorkScheduler.workIntervalMinutes` coerces anything lower (including intervals persisted by pre-0.3 versions, which allowed 30s — `NotificationSettingsDataSource` also clamps on read).
+  - **What still needs a manual app launch:** `MainActivity.observeNotificationWork()` is the only caller of `NotificationWorkScheduler.schedule`, so the very first enqueue requires opening the app — a non-issue, since first-run setup and the default-off toggle already force that. After that the work self-sustains across reboot, process death and app update. It does *not* survive: a user **force-stop** (Android puts the package in the stopped state and drops all its jobs — unavoidable by any app), **app hibernation / unused-app restrictions** (Android 11+, auto-enabled on 12+ — a few months without the user opening the UI and the system cancels the work, which is a realistic fate for a background poller nobody visits), and aggressive OEM battery managers (Xiaomi/Huawei/Samsung/OnePlus). None of these are fixable in code; the most we could do is surface a battery-optimization hint in `feature:settings`.
+  - The worker gets `MessageNotifier`/`SettingsRepository` through a Hilt `@EntryPoint` (`EntryPointAccessors`), **not** `@HiltWorker` — that would add the androidx.hilt worker KSP processor to this already bleeding-edge build for two singletons.
+  - **Dedup is persisted** (`MessageWatermarks` in `core:model` → `MessageWatermarkStore` in `core:data` → `MessageWatermarkDataSource` in `core:datastore`), because each worker run may be a fresh process — an in-memory watermark would re-baseline every run and never notify. The first-ever scan silently baselines; later scans only notify newer messages. A scan whose conversation/room *listing* fails defers the baseline rather than persisting an empty one (which would make the next good scan replay every backlog).
 - **Top-level navigation**: the 7 sections (Search, Downloads, Uploads, Rooms, Chat, Users, Browse) are driven by `app/navigation/SlskdApp.kt` using Material 3 **`NavigationSuiteScaffold`** (adaptive: bottom bar on compact, rail on medium, drawer on expanded). Each `feature:*:api` exposes a `<X>_ROUTE` constant; each `impl` exposes a `NavGraphBuilder.<x>Screen()` extension wired into the app's `NavHost`. `TopLevelDestination` (enum) maps route → label → icon. Most tabs are `PlaceholderScreen` (from `core:designsystem`) pending build-out; **Search** is the only fully-implemented one. The shell only renders once a connection is configured (the connection gate in `MainActivity`). The slskd REST client belongs in `core:network`; mapping to domain models and exposing `Flow`s belongs in `core:data` repositories. Base package is `com.slskdandroid`.
 - **Convention plugins** in `build-logic/convention/` (`slskd.android.application[.compose]`, `slskd.android.library[.compose]`, `slskd.android.feature`, `slskd.hilt`) own all shared build config. New modules apply these aliases (e.g. `alias(libs.plugins.slskd.android.feature)`) rather than configuring AGP/Kotlin directly.
 - **Material 3 Expressive theming** lives in `core:designsystem` — keep theme, dynamic color, motion specs, and shared components there; feature modules consume them and never define their own colors/shapes.
@@ -113,6 +119,33 @@ done
 
 Write the result to `local.properties`. CI doesn't use this file — the workflow installs the SDK
 itself and `ANDROID_HOME` is already set there.
+
+## Screenshots
+
+`.github/workflows/screenshots.yml` (**manual only**, `workflow_dispatch`) boots an API 37 emulator
+by hand, runs `app/src/androidTest/kotlin/com/slskdandroid/ScreenshotTest.kt` against a **real slskd
+instance**, pulls the PNGs off the device, writes half-scale JPGs to `screenshots/`, regenerates the
+README gallery via `tools/update_readme_screenshots.py`, and commits both.
+
+- **Secrets:** `SCREENSHOT_SERVER_URL`, `SCREENSHOT_API_KEY`. Never hardcode either (see the
+  "Checking real HTTP responses" note above). Inputs `query` (default `zelda flac` — a term that
+  reliably returns live peers) and `room` (default `slskd`) tune the content-dependent shots.
+- **This is the repo's only instrumented test**, and it is not part of `ci.yml` — it needs an
+  emulator, network, and credentials. `AndroidApplicationConventionPlugin` sets
+  `testInstrumentationRunner` solely for it (the *feature* plugin sets its own; `app` doesn't apply
+  that plugin, so it wasn't inherited).
+- **Waits key off `SlskdTestTags`** (`core:designsystem`), not screen titles: every screen renders
+  its chrome instantly, so a title match captures a spinner. Tags live in `core:designsystem`
+  because `:app`'s androidTest can't see a feature module's `internal` declarations. When you add a
+  screen worth capturing, tag its list row there rather than inventing a per-feature constant.
+- **Side effects on the target server are deliberate and limited**: it starts a search, and joins
+  `room` if not already a member. It never queues a download or sends a message — so the
+  Downloads/Uploads shots show whatever the server already has, empty state included.
+- **Full-device capture** (`UiAutomation.takeScreenshot()`), not `onRoot().captureToImage()`:
+  dropdowns, dialogs and modal sheets are separate windows a Compose-root capture would miss.
+- The workflow zeroes `animator_duration_scale` before instrumenting. That's not only cosmetic —
+  Compose reads it through `MotionDurationScale`, and without it the wavy/indeterminate progress
+  indicators keep the UI perpetually non-idle and hang `performClick`'s internal `waitForIdle`.
 
 ## Release, signing & CI
 

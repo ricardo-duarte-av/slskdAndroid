@@ -15,6 +15,7 @@ import androidx.core.app.Person
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.slskdandroid.core.common.IoDispatcher
+import com.slskdandroid.core.model.MessageWatermarks
 import com.slskdandroid.core.network.SlskdApi
 import com.slskdandroid.core.network.model.NetworkPrivateMessage
 import com.slskdandroid.core.network.model.NetworkRoomMessage
@@ -22,39 +23,30 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Polls slskd for new private messages and room mentions and posts Android message-style
- * notifications for them. Driven by the notification foreground service, which calls [scanOnce] on
- * the user's chosen interval.
+ * notifications for them. Driven by the periodic notification worker, which calls [scanOnce] on the
+ * user's chosen interval.
  *
- * De-duplication is watermark-based and kept in memory (the service is meant to be permanent):
- * the **first** scan after process start silently records the newest message per DM / room without
- * notifying (so enabling the feature doesn't dump the entire backlog into the shade), and later
- * scans only notify messages newer than that watermark. All timestamps compared are slskd's own
- * server timestamps, so device/server clock skew can't misfire the baseline.
+ * De-duplication is watermark-based and **persisted** (via [MessageWatermarkStore]) because each
+ * worker run may happen in a fresh process: the very **first** scan silently records the newest
+ * message per DM / room without notifying (so enabling the feature doesn't dump the entire backlog
+ * into the shade), and later scans only notify messages newer than that watermark. All timestamps
+ * compared are slskd's own server timestamps, so device/server clock skew can't misfire the
+ * baseline.
  */
 @Singleton
 class MessageNotifier @Inject constructor(
     private val api: SlskdApi,
     private val avatarRepository: AvatarRepository,
+    private val watermarkStore: MessageWatermarkStore,
     @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val notificationManager = NotificationManagerCompat.from(context)
-
-    // Newest notified/seen server-timestamp per conversation peer and per room.
-    private val dmWatermark = ConcurrentHashMap<String, Long>()
-    private val roomWatermark = ConcurrentHashMap<String, Long>()
-
-    @Volatile private var baselined = false
-
-    // Floor applied to DMs/rooms first seen *after* the initial baseline (e.g. a brand-new
-    // conversation), so their pre-existing history isn't announced retroactively.
-    @Volatile private var baselineFloorMs = 0L
 
     @Volatile private var cachedUsername: String? = null
 
@@ -62,43 +54,56 @@ class MessageNotifier @Inject constructor(
     suspend fun scanOnce() = withContext(ioDispatcher) {
         ensureChannel()
         val username = ensureUsername()
-        Log.d(TAG, "scan start — username=$username, baselined=$baselined")
+        val state = WatermarkState(watermarkStore.load())
+        Log.d(TAG, "scan start — username=$username, baselined=${state.baselined}")
+
+        val conversations = runCatching { api.getConversations(includeInactive = true, unAcknowledgedOnly = false) }
+            .onFailure { Log.w(TAG, "getConversations failed", it) }
+            .getOrNull()
+
+        val joinedRooms = runCatching { api.getJoinedRooms() }
+            .onFailure { Log.w(TAG, "getJoinedRooms failed", it) }
+            .getOrNull()
 
         val dms: List<Pair<String, List<NetworkPrivateMessage>>> =
-            runCatching { api.getConversations(includeInactive = true, unAcknowledgedOnly = false) }
-                .onFailure { Log.w(TAG, "getConversations failed", it) }
-                .getOrDefault(emptyList())
-                .mapNotNull { conv ->
-                    val messages = runCatching { api.getMessages(conv.username) }.getOrNull() ?: return@mapNotNull null
-                    conv.username to messages
-                }
+            conversations.orEmpty().mapNotNull { conv ->
+                val messages = runCatching { api.getMessages(conv.username) }.getOrNull() ?: return@mapNotNull null
+                conv.username to messages
+            }
 
         val rooms: List<Pair<String, List<NetworkRoomMessage>>> =
-            runCatching { api.getJoinedRooms() }
-                .onFailure { Log.w(TAG, "getJoinedRooms failed", it) }
-                .getOrDefault(emptyList())
-                .mapNotNull { room ->
-                    val messages = runCatching { api.getRoomMessages(room) }.getOrNull() ?: return@mapNotNull null
-                    room to messages
-                }
+            joinedRooms.orEmpty().mapNotNull { room ->
+                val messages = runCatching { api.getRoomMessages(room) }.getOrNull() ?: return@mapNotNull null
+                room to messages
+            }
 
         Log.d(TAG, "fetched ${dms.size} conversation(s), ${rooms.size} joined room(s)")
 
-        if (!baselined) {
-            establishBaseline(dms, rooms, username)
-            Log.d(TAG, "baseline established at floor=$baselineFloorMs — no notifications this cycle")
+        if (!state.baselined) {
+            // Only baseline off a *complete* picture. Baselining off a failed fetch would persist
+            // "baselined, nothing seen", and the next successful scan would then announce every
+            // message the server still remembers.
+            if (conversations == null || joinedRooms == null) {
+                Log.w(TAG, "listing failed — deferring baseline to the next scan")
+                return@withContext
+            }
+            establishBaseline(state, dms, rooms, username)
+            watermarkStore.save(state.toModel())
+            Log.d(TAG, "baseline established at floor=${state.baselineFloorMs} — no notifications this cycle")
             return@withContext
         }
 
-        dms.forEach { (peer, messages) -> notifyNewDirectMessages(peer, messages) }
+        dms.forEach { (peer, messages) -> notifyNewDirectMessages(state, peer, messages) }
         if (username != null) {
-            rooms.forEach { (room, messages) -> notifyNewRoomMentions(room, messages, username) }
+            rooms.forEach { (room, messages) -> notifyNewRoomMentions(state, room, messages, username) }
         } else {
             Log.d(TAG, "username unknown — skipping room-mention scan")
         }
+        watermarkStore.save(state.toModel())
     }
 
     private fun establishBaseline(
+        state: WatermarkState,
         dms: List<Pair<String, List<NetworkPrivateMessage>>>,
         rooms: List<Pair<String, List<NetworkRoomMessage>>>,
         username: String?,
@@ -107,7 +112,7 @@ class MessageNotifier @Inject constructor(
         dms.forEach { (peer, messages) ->
             val mx = messages.filter { it.isIncoming }.mapNotNull { it.epochMillis }.maxOrNull()
             if (mx != null) {
-                dmWatermark[peer] = mx
+                state.dm[peer] = mx
                 maxSeen = maxOf(maxSeen, mx)
             }
         }
@@ -119,18 +124,22 @@ class MessageNotifier @Inject constructor(
                 messages.filter { it.mentions(username) }.mapNotNull { it.epochMillis }.maxOrNull()
                     ?.let { maxSeen = maxOf(maxSeen, it) }
             }
-            roomWatermark[room] = messages.mapNotNull { it.epochMillis }.maxOrNull() ?: 0L
+            state.rooms[room] = messages.mapNotNull { it.epochMillis }.maxOrNull() ?: 0L
         }
-        baselineFloorMs = maxSeen
-        baselined = true
+        state.baselineFloorMs = maxSeen
+        state.baselined = true
     }
 
-    private suspend fun notifyNewDirectMessages(peer: String, messages: List<NetworkPrivateMessage>) {
+    private suspend fun notifyNewDirectMessages(
+        state: WatermarkState,
+        peer: String,
+        messages: List<NetworkPrivateMessage>,
+    ) {
         val incoming = messages.filter { it.isIncoming && it.epochMillis != null }
         if (incoming.isEmpty()) return
-        val floor = dmWatermark[peer] ?: baselineFloorMs
+        val floor = state.dm[peer] ?: state.baselineFloorMs
         val fresh = incoming.filter { it.epochMillis!! > floor }.sortedBy { it.epochMillis }
-        dmWatermark[peer] = maxOf(floor, incoming.maxOf { it.epochMillis!! })
+        state.dm[peer] = maxOf(floor, incoming.maxOf { it.epochMillis!! })
         Log.d(TAG, "DM $peer: ${incoming.size} incoming, ${fresh.size} new past floor=$floor")
         if (fresh.isEmpty()) return
         Log.i(TAG, "posting DM notification from $peer (${fresh.size} message(s))")
@@ -149,22 +158,27 @@ class MessageNotifier @Inject constructor(
         }
     }
 
-    private fun notifyNewRoomMentions(room: String, messages: List<NetworkRoomMessage>, username: String) {
+    private fun notifyNewRoomMentions(
+        state: WatermarkState,
+        room: String,
+        messages: List<NetworkRoomMessage>,
+        username: String,
+    ) {
         // A room first seen after the initial baseline — i.e. joined from another slskd client
         // mid-session. Silently baseline it to its newest message so we don't replay its backlog;
         // only mentions arriving afterwards notify.
-        if (!roomWatermark.containsKey(room)) {
-            val newest = messages.mapNotNull { it.epochMillis }.maxOrNull() ?: baselineFloorMs
-            roomWatermark[room] = newest
+        if (!state.rooms.containsKey(room)) {
+            val newest = messages.mapNotNull { it.epochMillis }.maxOrNull() ?: state.baselineFloorMs
+            state.rooms[room] = newest
             Log.d(TAG, "room $room: first seen (joined elsewhere?) — baselined silently at $newest")
             return
         }
-        val floor = roomWatermark.getValue(room)
+        val floor = state.rooms.getValue(room)
         val mentions = messages.filter { !it.isSelf && it.epochMillis != null && it.mentions(username) }
         Log.d(TAG, "room $room: ${messages.size} message(s), ${mentions.size} mention(s) of '$username'")
         if (mentions.isEmpty()) return
         val fresh = mentions.filter { it.epochMillis!! > floor }.sortedBy { it.epochMillis }
-        roomWatermark[room] = maxOf(floor, mentions.maxOf { it.epochMillis!! })
+        state.rooms[room] = maxOf(floor, mentions.maxOf { it.epochMillis!! })
         Log.d(TAG, "room $room: ${fresh.size} new mention(s) past floor=$floor")
         if (fresh.isEmpty()) return
         Log.i(TAG, "posting room notification for $room (${fresh.size} mention(s))")
@@ -225,6 +239,24 @@ class MessageNotifier @Inject constructor(
             ?.takeIf { it.isNotBlank() }
             ?.also { cachedUsername = it }
     }
+}
+
+/**
+ * Mutable working copy of the persisted [MessageWatermarks] for the duration of one scan: loaded at
+ * the top of [MessageNotifier.scanOnce], mutated as messages are examined, written back at the end.
+ */
+private class WatermarkState(persisted: MessageWatermarks) {
+    var baselined: Boolean = persisted.baselined
+    var baselineFloorMs: Long = persisted.baselineFloorMs
+    val dm: MutableMap<String, Long> = persisted.directMessages.toMutableMap()
+    val rooms: MutableMap<String, Long> = persisted.rooms.toMutableMap()
+
+    fun toModel() = MessageWatermarks(
+        baselined = baselined,
+        baselineFloorMs = baselineFloorMs,
+        directMessages = dm.toMap(),
+        rooms = rooms.toMap(),
+    )
 }
 
 private val NetworkPrivateMessage.isIncoming: Boolean

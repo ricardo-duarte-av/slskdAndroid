@@ -8,7 +8,7 @@
     <string name="settings_notifications_title">Message notifications</string>
     <string name="settings_notifications_subtitle">Check slskd in the background and notify on new DMs and room mentions.</string>
     <string name="settings_interval_title">Check interval</string>
-    <string name="settings_interval_subtitle">How often the background service polls for new messages. Shorter intervals are more responsive but use more battery and data.</string>
+    <string name="settings_interval_subtitle">How often to poll for new messages in the background. Android schedules these checks at most every 15 minutes, and may delay them further to save battery.</string>
 
     <!-- Check-interval readouts. Deliberately three separate forms rather than string
          concatenation, so a translation can reorder or re-unit them. -->

@@ -9,12 +9,14 @@ import com.slskdandroid.core.data.DefaultAvatarRepository
 import com.slskdandroid.core.data.DefaultBrowseRepository
 import com.slskdandroid.core.data.DefaultChatRepository
 import com.slskdandroid.core.data.DefaultDownloadsRepository
+import com.slskdandroid.core.data.DefaultMessageWatermarkStore
 import com.slskdandroid.core.data.DefaultRoomsRepository
 import com.slskdandroid.core.data.DefaultSearchRepository
 import com.slskdandroid.core.data.DefaultSettingsRepository
 import com.slskdandroid.core.data.DefaultUploadsRepository
 import com.slskdandroid.core.data.DefaultUsersRepository
 import com.slskdandroid.core.data.DownloadsRepository
+import com.slskdandroid.core.data.MessageWatermarkStore
 import com.slskdandroid.core.data.RoomsRepository
 import com.slskdandroid.core.data.SearchRepository
 import com.slskdandroid.core.data.SettingsRepository
@@ -71,4 +73,8 @@ internal interface DataModule {
     @Binds
     @Singleton
     fun bindsSettingsRepository(impl: DefaultSettingsRepository): SettingsRepository
+
+    @Binds
+    @Singleton
+    fun bindsMessageWatermarkStore(impl: DefaultMessageWatermarkStore): MessageWatermarkStore
 }

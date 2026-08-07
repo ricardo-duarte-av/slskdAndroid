@@ -48,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
@@ -64,6 +65,7 @@ import com.slskdandroid.core.designsystem.component.ReadableWidth
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.formatBytes
 import com.slskdandroid.core.designsystem.component.asString
+import com.slskdandroid.core.designsystem.testing.SlskdTestTags
 
 @Composable
 internal fun BrowseRoute(
@@ -272,6 +274,7 @@ private fun TreeNodeRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .testTag(SlskdTestTags.BROWSE_TREE_ROW)
             .clickable {
                 // Tapping a folder with files opens it; otherwise it expands/collapses.
                 val exactPath = row.exactPath

@@ -31,8 +31,8 @@ android {
 
     defaultConfig {
         applicationId = "pt.aguiarvieira.androidslskd"
-        versionCode = 10
-        versionName = "0.2.0"
+        versionCode = 11
+        versionName = "0.3.0"
     }
 
     signingConfigs {
@@ -84,4 +84,16 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.work.runtime.ktx)
+
+    testImplementation(libs.junit)
+
+    // Instrumentation: only the ScreenshotTest, driven by the `screenshots` workflow. The Compose
+    // BOM is already added to androidTestImplementation by the compose convention plugin.
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.espresso.core)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

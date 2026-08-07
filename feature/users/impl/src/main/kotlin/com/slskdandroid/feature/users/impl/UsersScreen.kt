@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -60,6 +61,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.slskdandroid.core.designsystem.component.SettingsActionButton
 import com.slskdandroid.core.designsystem.component.asString
+import com.slskdandroid.core.designsystem.testing.SlskdTestTags
 import com.slskdandroid.core.model.UserPresence
 import com.slskdandroid.core.model.UserProfile
 
@@ -316,7 +318,7 @@ private fun PresenceLabel(presence: UserPresence, isPrivileged: Boolean) {
 
 @Composable
 private fun StatsCard(profile: UserProfile) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+    ElevatedCard(modifier = Modifier.fillMaxWidth().testTag(SlskdTestTags.USER_STATS_CARD)) {
         Column(Modifier.padding(16.dp)) {
             StatRow(
                 stringResource(R.string.users_stat_free_slot),
