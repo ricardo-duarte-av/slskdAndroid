@@ -84,6 +84,72 @@ class DefaultSearchRepositoryTest {
         }
     }
 
+    /**
+     * Regression test: a search started from the app navigates to its detail screen the instant the
+     * POST returns, which lands inside slskd's window where the record already carries the Completed
+     * flag but `/responses` is still empty (slskd persists from its state-changed callback, then
+     * attaches responses during finalization).
+     *
+     * The old code emitted that empty snapshot as final and closed the flow, so the screen showed
+     * "no results" until it was closed and reopened. It must instead keep polling — and keep
+     * reporting the search as running, so the UI holds its progress indicator.
+     */
+    @Test
+    fun `search flagged complete before its responses land keeps polling instead of finishing empty`() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        var poll = 0
+        val api = object : FakeSlskdApi() {
+            // Complete from the very first poll, and claiming two responses throughout.
+            override suspend fun getSearch(id: String) =
+                networkSearch(id, isComplete = true, responseCount = 2)
+
+            // ...but /responses only serves them from the second poll onwards.
+            override suspend fun getSearchResponses(id: String) = when (poll++) {
+                0 -> emptyList()
+                else -> listOf(networkResponse("alice"), networkResponse("bob"))
+            }
+        }
+        val repository = DefaultSearchRepository(api, dispatcher)
+
+        repository.observeSearch("s1").test {
+            val first = awaitItem()
+            assertTrue("must not report completion while responses are missing", !first.isComplete)
+            assertEquals(emptyList<String>(), first.responses.map { it.username })
+
+            val second = awaitItem()
+            assertTrue(second.isComplete)
+            assertEquals(listOf("alice", "bob"), second.responses.map { it.username }.sorted())
+
+            awaitComplete()
+        }
+    }
+
+    /**
+     * The settling wait above is bounded: slskd logs a "record may be left 'hanging'" case when
+     * finalization throws, which would leave the reported count permanently ahead of the responses
+     * on offer. Rather than poll forever, give up and settle on what we have.
+     */
+    @Test
+    fun `a completed search whose responses never arrive gives up after the settling window`() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val api = object : FakeSlskdApi() {
+            override suspend fun getSearch(id: String) =
+                networkSearch(id, isComplete = true, responseCount = 5)
+
+            override suspend fun getSearchResponses(id: String) = emptyList<NetworkSearchResponse>()
+        }
+        val repository = DefaultSearchRepository(api, dispatcher)
+
+        repository.observeSearch("s1").test {
+            // 15 settling ticks: the first 14 report the search as still running, the last gives up.
+            repeat(14) { assertTrue(!awaitItem().isComplete) }
+            val last = awaitItem()
+            assertTrue(last.isComplete)
+            assertEquals(emptyList<String>(), last.responses.map { it.username })
+            awaitComplete()
+        }
+    }
+
     @Test
     fun `a transient poll failure after the first emission is tolerated and polling continues`() = runTest {
         val dispatcher = UnconfinedTestDispatcher(testScheduler)
@@ -143,8 +209,8 @@ class DefaultSearchRepositoryTest {
     }
 }
 
-private fun networkSearch(id: String, isComplete: Boolean) =
-    NetworkSearch(id = id, searchText = "query", isComplete = isComplete)
+private fun networkSearch(id: String, isComplete: Boolean, responseCount: Int = 0) =
+    NetworkSearch(id = id, searchText = "query", isComplete = isComplete, responseCount = responseCount)
 
 private fun networkResponse(username: String) =
     NetworkSearchResponse(username = username, files = listOf(NetworkFile(filename = "$username.mp3")))

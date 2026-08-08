@@ -50,21 +50,39 @@ internal class DefaultSearchRepository @Inject constructor(
         // long-polling handshake fails against slskd when the hub is actively broadcasting (it
         // batches the handshake response with hub messages), which broke opening an ongoing search.
         var emittedOnce = false
+        // Ticks spent waiting for a *completed* search's responses to show up. See below.
+        var settlingTicks = 0
         while (currentCoroutineContext().isActive) {
-            val progress = runCatching {
+            val poll = runCatching {
                 val search = api.getSearch(id)
                 val responses = api.getSearchResponses(id).map { it.toModel() }
-                SearchProgress(responses, isComplete = search.isComplete)
+                search to responses
             }.onFailure {
                 // Surface the first failure (nothing shown yet); tolerate transient poll errors
                 // once results are on screen and retry on the next tick.
                 if (!emittedOnce) throw it
             }.getOrNull()
 
-            if (progress != null) {
+            if (poll != null) {
+                val (search, responses) = poll
+                // slskd sets the Completed flag from its search StateChanged callback and persists
+                // the record *there*, then attaches `search.Responses` afterwards during
+                // finalization. So `isComplete` can be true for a tick or two while /responses still
+                // returns nothing — and a search started from this app lands in that window almost
+                // every time, because we navigate to the detail screen the instant the POST returns.
+                //
+                // Treating that first complete-but-empty read as final is what stranded the screen
+                // on "no results" until it was closed and reopened. Keep polling until the responses
+                // we can see match the count slskd reports, and keep reporting the search as still
+                // running so the UI holds its progress indicator (which is what slskd's own web UI
+                // does) rather than flashing an empty result set.
+                val settled = responses.size >= search.responseCount
+                if (search.isComplete && !settled) settlingTicks++
+
+                val done = search.isComplete && (settled || settlingTicks >= MAX_SETTLING_TICKS)
                 emittedOnce = true
-                emit(progress)
-                if (progress.isComplete) return@flow
+                emit(SearchProgress(responses, isComplete = done))
+                if (done) return@flow
             }
             delay(POLL_INTERVAL_MS)
         }
@@ -129,3 +147,11 @@ private fun NetworkFile.toModel(isLocked: Boolean) = SearchResultFile(
 )
 
 private const val POLL_INTERVAL_MS = 2_000L
+
+/**
+ * How many polls to keep making after slskd reports a search complete while its response count and
+ * the responses it actually serves still disagree. Bounds the wait so a search whose responses never
+ * materialize (slskd logs a "record may be left 'hanging'" case when finalization throws) settles on
+ * whatever it has instead of polling forever. 15 ticks ≈ 30s.
+ */
+private const val MAX_SETTLING_TICKS = 15

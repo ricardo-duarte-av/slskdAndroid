@@ -6,14 +6,12 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -38,6 +36,7 @@ import java.io.File
  *   -e apiKey    …
  *   -e query     'zelda flac'
  *   -e room      slskd
+ *   -e peers     daedric,FL4CT4STiC
  *
  * Each screen is captured inside its own [capture] block: one content-dependent step going wrong
  * (a peer that went offline, a room with no traffic) logs and is skipped rather than failing the
@@ -78,6 +77,14 @@ class ScreenshotTest {
     /** The room opened for the room-chat shot; joined first if we aren't a member. */
     private val room: String = args.getString("room") ?: "slskd"
 
+    /**
+     * Peers for the user-profile and browse shots, tried in order until one loads. Named explicitly
+     * rather than picked out of the search results: peers come and go, and a profile that fails to
+     * resolve costs two screenshots.
+     */
+    private val peers: List<String> =
+        (args.getString("peers") ?: "daedric,FL4CT4STiC").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+
     private val outputDir: File by lazy {
         // Internal storage. Under scoped storage adb can't read another app's
         // /sdcard/Android/data/<pkg>, so the workflow pulls these as root instead.
@@ -90,11 +97,11 @@ class ScreenshotTest {
         check(apiKey.isNotBlank()) { "apiKey instrumentation argument is required" }
 
         connect()
-        val searchOk = runSearch()
+        runSearch()
         captureTransferTabs()
         captureRooms()
         captureChat()
-        if (searchOk) capturePeerTabs()
+        capturePeerTabs()
         captureSettings()
 
         val produced = outputDir.listFiles()?.map { it.name }?.sorted().orEmpty()
@@ -129,24 +136,21 @@ class ScreenshotTest {
      * Starts a search, which auto-navigates to the detail screen (SearchListViewModel emits the new
      * id on `openSearch`), captures the streaming results, then backs out to capture the list —
      * which is only worth a screenshot once it has that search in it.
-     *
-     * @return whether peer results arrived; the Users/Browse shots are driven off them.
      */
-    private fun runSearch(): Boolean {
-        var gotResults = false
-
+    private fun runSearch() {
         capture("03-search-results") {
-            // The search list has exactly one text field.
-            composeRule.onNode(hasSetTextAction()).performTextInput(query)
-            closeKeyboard()
-            // ImeAction.Search → SearchListAction.Submit, the same path as tapping the field's
-            // trailing icon but without depending on that icon's label.
-            composeRule.onNode(hasSetTextAction()).performImeAction()
+            typeQuery(query)
+            // Tap the field's own submit icon rather than performImeAction(): the previous run
+            // produced an empty query field and no search on the server at all, so this path leans
+            // on a plain click of a real button instead of the IME semantics action.
+            composeRule.onNodeWithContentDescription("Start search").performClick()
 
-            // Results stream in over REST polling (2s), so peers appear well before the search
-            // completes. Wait for the first, then let a few more land for a fuller screen.
+            // slskd's POST /searches runs the search to completion before it returns (it holds a
+            // one-at-a-time limiter for the duration), so the app can sit on the list for a while
+            // before navigating. Wait for the detail screen — the query field going away — rather
+            // than assuming the jump is instant.
+            waitUntil(180_000) { !textExists(SEARCH_FIELD_LABEL) }
             waitForTag(SlskdTestTags.SEARCH_PEER_CARD, timeoutMillis = 120_000)
-            gotResults = true
             settle(8_000)
         }
 
@@ -157,8 +161,6 @@ class ScreenshotTest {
             waitForTag(SlskdTestTags.SEARCH_ROW, timeoutMillis = 30_000)
             settle()
         }
-
-        return gotResults
     }
 
     // --- Downloads / Uploads ------------------------------------------------------------------
@@ -237,54 +239,50 @@ class ScreenshotTest {
     // --- Users / Browse -----------------------------------------------------------------------
 
     /**
-     * Both of these need a real peer. Rather than hard-coding a username that may be offline on the
-     * day, they're driven the way a user reaches them: from a search result's overflow menu. Peers
-     * do go offline mid-search, so this tries the first few before giving up.
+     * The Users tab looked up by name, then Browse for the same peer via the profile's Browse
+     * button. Tries each of [peers] in turn — a peer that happens to be offline resolves to an error
+     * state, which is a poor screenshot, so falling through to the next is worth the extra minute.
      */
     private fun capturePeerTabs() {
-        var opened = false
-        for (peerIndex in 0 until PEER_ATTEMPTS) {
-            if (openPeerProfile(peerIndex)) {
-                opened = true
-                break
-            }
-            Log.i(TAG, "peer #$peerIndex didn't load a profile; trying the next")
-        }
-        if (!opened) {
-            Log.w(TAG, "no peer profile loaded — skipping the Users and Browse shots")
+        val peer = peers.firstOrNull(::openPeerProfile)
+        if (peer == null) {
+            Log.w(TAG, "none of $peers loaded a profile — skipping the Users and Browse shots")
             return
         }
+        Log.i(TAG, "using peer '$peer' for the profile and browse shots")
 
         capture("09-user-profile") { settle() }
 
         capture("10-browse") {
-            // The profile's Browse button opens the same peer in the Browse tab.
+            // The profile's Browse button opens the same peer in the Browse tab, so the two shots
+            // are guaranteed to be of the same user.
             composeRule.onNodeWithText("Browse").performClick()
-            waitForTag(SlskdTestTags.BROWSE_TREE_ROW, timeoutMillis = 90_000)
+            // A peer's full share can be large and slskd streams it — hence the long ceiling.
+            waitForTag(SlskdTestTags.BROWSE_TREE_ROW, timeoutMillis = 120_000)
             settle(2_000)
         }
     }
 
-    /** Opens the search results, then peer [peerIndex]'s profile. True once its stats card renders. */
-    private fun openPeerProfile(peerIndex: Int): Boolean = runCatching {
-        openTab("Search")
-        waitForTag(SlskdTestTags.SEARCH_ROW, timeoutMillis = 30_000)
-        composeRule.onAllNodesWithTag(SlskdTestTags.SEARCH_ROW).onFirst().performClick()
-        waitForTag(SlskdTestTags.SEARCH_PEER_CARD, timeoutMillis = 60_000)
+    /** Looks [username] up on the Users tab. True once their stats card renders. */
+    private fun openPeerProfile(username: String): Boolean = runCatching {
+        openTab("Users")
+        // Leave whatever peer a previous attempt left open, so the lookup field is on screen.
+        if (!textExists("Enter a username")) {
+            runCatching { composeRule.onNodeWithContentDescription("Close user").performClick() }
+            waitForText("Enter a username", timeoutMillis = 10_000)
+        }
 
-        // "More actions for <username>" — the username is unknown here, hence the substring match.
-        val menus = composeRule.onAllNodesWithContentDescription("More actions for", substring = true)
-        if (menus.fetchSemanticsNodes().size <= peerIndex) return@runCatching false
-        menus[peerIndex].performClick()
-        composeRule.onNodeWithText("Info").performClick()
+        composeRule.onNode(hasSetTextAction()).performTextInput(username)
+        closeKeyboard()
+        composeRule.onNodeWithContentDescription("Look up user").performClick()
 
-        // Users tab: Loading → Loaded (stats card) or Error ("They may be offline").
+        // Loading → Loaded (stats card) or Error ("They may be offline").
         waitUntil(45_000) {
             tagExists(SlskdTestTags.USER_STATS_CARD) || textExists("They may be offline")
         }
         tagExists(SlskdTestTags.USER_STATS_CARD)
     }.getOrElse {
-        Log.w(TAG, "opening peer #$peerIndex failed", it)
+        Log.w(TAG, "looking up '$username' failed", it)
         false
     }
 
@@ -303,6 +301,23 @@ class ScreenshotTest {
     }
 
     // --- Plumbing -----------------------------------------------------------------------------
+
+    /**
+     * Types into the screen's single text field, verifying the text actually landed. The first run
+     * of this workflow captured an empty query field and started no search at all, with neither
+     * `performTextInput` nor the submit throwing — so the input is now checked and retried rather
+     * than assumed.
+     */
+    private fun typeQuery(text: String) {
+        repeat(TEXT_INPUT_ATTEMPTS) { attempt ->
+            composeRule.onNode(hasSetTextAction()).performTextInput(text)
+            closeKeyboard()
+            if (textExists(text)) return
+            Log.w(TAG, "query text didn't land (attempt ${attempt + 1}/$TEXT_INPUT_ATTEMPTS)")
+            settle(1_000)
+        }
+        error("could not type '$text' into the query field")
+    }
 
     /** Switches top-level tab. The nav suite renders icons only; the label is the description. */
     private fun openTab(label: String) {
@@ -377,7 +392,7 @@ class ScreenshotTest {
         /** Label of the Search tab's query field — the first thing unique to the signed-in shell. */
         const val SEARCH_FIELD_LABEL = "What are you looking for?"
 
-        /** How many search peers to try before giving up on the Users/Browse shots. */
-        const val PEER_ATTEMPTS = 3
+        /** Retries for a text-field entry that silently doesn't land. */
+        const val TEXT_INPUT_ATTEMPTS = 3
     }
 }

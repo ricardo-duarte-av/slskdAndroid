@@ -26,6 +26,10 @@ on:
         description: "Room opened for the room-chat screenshot (joined if not already a member)"
         required: false
         default: "slskd"
+      peers:
+        description: "Comma-separated usernames for the profile/browse shots; tried in order"
+        required: false
+        default: "daedric,FL4CT4STiC"
 
 permissions:
   contents: write
@@ -40,6 +44,7 @@ env:
   DEVICE: ${{ github.event.inputs.device || 'pixel_6' }}
   QUERY: ${{ github.event.inputs.query || 'zelda flac' }}
   ROOM: ${{ github.event.inputs.room || 'slskd' }}
+  PEERS: ${{ github.event.inputs.peers || 'daedric,FL4CT4STiC' }}
   # slskd server + API key for the run. Supplied entirely via repo secrets (Settings → Secrets and
   # variables → Actions) so no server address or key lives in the repo. Both are required — the job
   # fails fast below if either is unset.
@@ -214,6 +219,7 @@ jobs:
             -e apiKey "'$API_KEY'" \
             -e query "'$QUERY'" \
             -e room "'$ROOM'" \
+            -e peers "'$PEERS'" \
             "${APP_ID}.test/androidx.test.runner.AndroidJUnitRunner" \
             | tee "$RUNNER_TEMP/instrument.out"
 

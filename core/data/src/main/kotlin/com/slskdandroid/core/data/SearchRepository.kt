@@ -28,9 +28,14 @@ interface SearchRepository {
     suspend fun getSearch(id: String): Search
 
     /**
-     * Streams the responses for an existing search [id]. If the search is already complete the flow
-     * emits the final results once and completes; otherwise it emits a growing [SearchProgress] as
-     * peers respond (by polling REST) and completes when slskd reports the search finished.
+     * Streams the responses for an existing search [id]. Emits a growing [SearchProgress] as peers
+     * respond (by polling REST) and completes once slskd reports the search finished *and* has
+     * served as many responses as it claims to hold.
+     *
+     * That second condition matters: slskd flags a search Completed from its state-changed callback
+     * and only attaches the responses afterwards, so a search opened the moment it starts sees
+     * `isComplete` before `/responses` has anything in it. Until the two agree, [SearchProgress
+     * .isComplete] stays false so the UI keeps showing progress rather than an empty result set.
      */
     fun observeSearch(id: String): Flow<SearchProgress>
 
