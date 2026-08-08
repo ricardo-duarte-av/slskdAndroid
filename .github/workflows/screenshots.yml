@@ -44,7 +44,7 @@ env:
   DEVICE: ${{ github.event.inputs.device || 'pixel_6' }}
   QUERY: ${{ github.event.inputs.query || 'zelda flac' }}
   ROOM: ${{ github.event.inputs.room || 'slskd' }}
-  PEERS: ${{ github.event.inputs.peers || 'daedric,FL4CT4STiC' }}
+  PEERS: ${{ github.event.inputs.peers || 'slskdandroid' }}
   # slskd server + API key for the run. Supplied entirely via repo secrets (Settings → Secrets and
   # variables → Actions) so no server address or key lives in the repo. Both are required — the job
   # fails fast below if either is unset.
