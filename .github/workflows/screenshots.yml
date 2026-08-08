@@ -29,7 +29,7 @@ on:
       peers:
         description: "Comma-separated usernames for the profile/browse shots; tried in order"
         required: false
-        default: "daedric,FL4CT4STiC"
+        default: "slskdandroid"
 
 permissions:
   contents: write
