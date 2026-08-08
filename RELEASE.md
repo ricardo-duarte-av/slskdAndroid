@@ -12,7 +12,7 @@ builds every push and auto-publishes to the Play Store.
   and errors still log.
 - **Signing** is read from `keystore.properties` locally, or from environment variables in CI.
 - **CI** (`.github/workflows/ci.yml`) builds debug + release (APK **and** AAB) on every push,
-  uploads them as artifacts. On `v*` tags it also publishes the AAB to Play (internal/draft)
+  uploads them as artifacts. On `v*` tags it also publishes the AAB to Play (internal, live)
   and cuts a **GitHub Release** with the debug + release APKs attached.
 
 ### Cutting a release
@@ -28,7 +28,8 @@ Publishing is tied to version tags (so each Play upload gets a deliberate, uniqu
 
 1. Bump `versionCode` (and usually `versionName`) in `app/build.gradle.kts`, commit, push.
 2. Tag it: `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag triggers:
-   - **Play** → AAB uploaded to the internal track as a draft.
+   - **Play** → AAB uploaded to the internal track and released **live** to internal
+     testers (status `completed`), no manual promotion needed.
    - **GitHub Release** → created with `slskdAndroid-vX.Y.Z-debug.apk` and
      `slskdAndroid-vX.Y.Z-release.apk` as downloads.
 
@@ -85,9 +86,9 @@ The CI decodes the keystore to a temp file and exposes it via `KEYSTORE_FILE`; t
 `signingConfigs.release` reads `KEYSTORE_FILE` / `KEYSTORE_PASSWORD` / `KEY_ALIAS` /
 `KEY_PASSWORD` from the environment.
 
-Builds run on **every push and PR**. The **publish** job runs only on pushes to `main` or
-`v*` tags in the `ricardo-duarte-av/slskdAndroid` repo (adjust the `github.repository`
-check in `ci.yml` if you fork/rename).
+Builds run on **every push and PR**. The **publish** job runs only on `v*` tags in the
+`ricardo-duarte-av/slskdAndroid` repo (adjust the `github.repository` check in `ci.yml` if you
+fork/rename) — pushes to `main` build and upload artifacts but never publish.
 
 ## One-time Play Console setup (manual — Google requires it)
 
@@ -123,13 +124,20 @@ store listing must be done by hand. After that, CI takes over.
 
 The build job produces the signed AAB; the publish job downloads that artifact and uploads
 it straight to the **Play Developer API** via the `r0adkll/upload-google-play` action.
-Defaults (in `ci.yml`): **track = `internal`**, **status = `draft`**. The R8 `mapping.txt`
-is uploaded alongside it (when present) for crash deobfuscation. Change `track` to
-`alpha`/`beta`/`production` and `status` to `completed` in `ci.yml` once you're confident.
+Defaults (in `ci.yml`): **track = `internal`**, **status = `completed`** — the release goes
+live to internal testers as soon as Play finishes processing, with no "review and roll out"
+step in the Console. (It was `draft` until 0.3.x, which meant every tagged upload sat waiting
+for someone to promote it by hand.) The R8 `mapping.txt` is uploaded alongside it (when
+present) for crash deobfuscation.
 
-> **Version codes:** each Play upload needs a unique, increasing `versionCode`. It's `2` in
-> `app/build.gradle.kts` today (v1 was the manual first upload) — bump it for every release
-> (or wire it to the CI run number if you want that automated later).
+To go further, change `tracks` to `alpha`/`beta`/`production` in `ci.yml`. Two caveats before
+pointing this at **production**: every `v*` tag would then ship to all users with no human
+gate, and Google requires an app's *first* production release to be created manually in the
+Console — the API rejects it until one exists.
+
+> **Version codes:** each Play upload needs a unique, increasing `versionCode`. It lives in
+> `app/build.gradle.kts` (`11` as of v0.3.0) — bump it for every release, or Play rejects the
+> upload as a duplicate.
 
 ## Why not Gradle Play Publisher?
 
