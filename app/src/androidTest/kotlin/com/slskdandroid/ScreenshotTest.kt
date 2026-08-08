@@ -3,6 +3,7 @@ package com.slskdandroid
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -42,11 +43,12 @@ import java.io.File
  * (a peer that went offline, a room with no traffic) logs and is skipped rather than failing the
  * whole run, so we still commit the screens that did render.
  *
- * **Side effects on the target server.** Two, both deliberate: it starts a search (which shows up
- * in the server's search history, and is what the Search screenshots are of), and if the app hasn't
- * joined [room] it joins it, so the room chat has something to render. It never queues a download,
- * sends a message, or deletes anything — so Downloads/Uploads capture whatever transfer state the
- * server already has, empty state included.
+ * **Side effects on the target server.** It starts a search — that's what the Search screenshots
+ * are of — and deletes that same search again on the way out, so repeated runs don't pile up
+ * identical entries. If the app hasn't joined [room] it joins it, so the room chat has something to
+ * render; that membership is left in place. It never queues a download or sends a message, and the
+ * only thing it deletes is the search it created, so Downloads/Uploads capture whatever transfer
+ * state the server already has, empty state included.
  *
  * **Why full-device capture and not `onRoot().captureToImage()`.** Dialogs, dropdown menus and
  * modal sheets each live in their own window, so a Compose-root capture would miss them, and the
@@ -96,13 +98,18 @@ class ScreenshotTest {
         check(serverUrl.isNotBlank()) { "serverUrl instrumentation argument is required" }
         check(apiKey.isNotBlank()) { "apiKey instrumentation argument is required" }
 
-        connect()
-        runSearch()
-        captureTransferTabs()
-        captureRooms()
-        captureChat()
-        capturePeerTabs()
-        captureSettings()
+        try {
+            connect()
+            runSearch()
+            captureTransferTabs()
+            captureRooms()
+            captureChat()
+            capturePeerTabs()
+            captureSettings()
+        } finally {
+            // In a finally block so a run that dies halfway still cleans up after itself.
+            deleteSearch()
+        }
 
         val produced = outputDir.listFiles()?.map { it.name }?.sorted().orEmpty()
         Log.i(TAG, "captured ${produced.size} screenshots: $produced")
@@ -298,6 +305,32 @@ class ScreenshotTest {
             waitForText("Message notifications", timeoutMillis = 15_000)
             settle()
         }
+    }
+
+    // --- Cleanup ------------------------------------------------------------------------------
+
+    /**
+     * Removes the search this run created, through the list row's own delete button, so repeated
+     * runs don't pile up identical searches on the server.
+     *
+     * Targets the row by name rather than position: the delete is deliberately scoped to *our*
+     * search, so a server with other history keeps it. Entirely best-effort — cleanup failing is
+     * not worth failing a run that already produced its screenshots.
+     */
+    private fun deleteSearch() {
+        runCatching {
+            openTab("Search")
+            waitForText(SEARCH_FIELD_LABEL, timeoutMillis = 15_000)
+            val label = "Delete search: $query"
+            if (!nodeExists(hasContentDescription(label))) {
+                Log.i(TAG, "no '$query' search to clean up")
+                return
+            }
+            composeRule.onNodeWithContentDescription(label).performClick()
+            // The list re-polls every 2s; wait for the row to actually go rather than assuming.
+            waitUntil(15_000) { !nodeExists(hasContentDescription(label)) }
+            Log.i(TAG, "deleted the '$query' search")
+        }.onFailure { Log.w(TAG, "could not delete the '$query' search", it) }
     }
 
     // --- Plumbing -----------------------------------------------------------------------------

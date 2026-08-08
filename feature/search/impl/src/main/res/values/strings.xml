@@ -11,7 +11,9 @@
     <string name="search_loading">Loading searches…</string>
     <string name="search_empty">No searches yet. Start one above.</string>
     <string name="search_load_failed">Couldn\'t load searches</string>
-    <string name="search_delete">Delete search</string>
+    <!-- Names the search being deleted: a list of rows whose delete buttons all announce a bare
+         "Delete search" gives a screen-reader user no way to tell which row they're on. -->
+    <string name="search_delete">Delete search: %1$s</string>
     <string name="search_status_searching">Searching…</string>
     <string name="search_status_completed">Completed</string>
 

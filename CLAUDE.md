@@ -138,9 +138,11 @@ README gallery via `tools/update_readme_screenshots.py`, and commits both.
   its chrome instantly, so a title match captures a spinner. Tags live in `core:designsystem`
   because `:app`'s androidTest can't see a feature module's `internal` declarations. When you add a
   screen worth capturing, tag its list row there rather than inventing a per-feature constant.
-- **Side effects on the target server are deliberate and limited**: it starts a search, and joins
-  `room` if not already a member. It never queues a download or sends a message — so the
-  Downloads/Uploads shots show whatever the server already has, empty state included.
+- **Side effects on the target server are deliberate and limited**: it starts a search and deletes
+  that same search on the way out (in a `finally`, so a half-failed run still tidies up), and joins
+  `room` if not already a member — that membership is left in place. It never queues a download or
+  sends a message, and the only thing it deletes is the search it created, so the Downloads/Uploads
+  shots show whatever the server already has, empty state included.
 - **Full-device capture** (`UiAutomation.takeScreenshot()`), not `onRoot().captureToImage()`:
   dropdowns, dialogs and modal sheets are separate windows a Compose-root capture would miss.
 - The workflow zeroes `animator_duration_scale` before instrumenting. That's not only cosmetic —

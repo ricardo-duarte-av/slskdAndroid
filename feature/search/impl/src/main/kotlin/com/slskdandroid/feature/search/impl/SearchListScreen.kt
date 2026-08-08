@@ -187,7 +187,7 @@ private fun SearchRow(
         IconButton(onClick = onDelete) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = stringResource(R.string.search_delete),
+                contentDescription = stringResource(R.string.search_delete, search.searchText),
                 tint = MaterialTheme.colorScheme.error,
             )
         }
