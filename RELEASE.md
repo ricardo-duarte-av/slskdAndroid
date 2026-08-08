@@ -20,6 +20,12 @@ builds every push and auto-publishes to the Play Store.
 Publishing is tied to version tags (so each Play upload gets a deliberate, unique
 `versionCode` — Play rejects duplicates). `main` pushes only build + upload artifacts.
 
+> ⚠️ **Never tag a commit whose message contains `[skip ci]`.** GitHub applies the skip
+> directive to any push event naming that commit as its head — a tag push included — so the
+> publish and release jobs are silently skipped and you get a tag with no release. This bit
+> v0.3.0 once, when the tag landed on a screenshots-regeneration commit. If you need to tag
+> such a commit, put an empty commit on top first and tag that.
+
 1. Bump `versionCode` (and usually `versionName`) in `app/build.gradle.kts`, commit, push.
 2. Tag it: `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag triggers:
    - **Play** → AAB uploaded to the internal track as a draft.

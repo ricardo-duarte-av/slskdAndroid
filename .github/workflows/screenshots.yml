@@ -294,5 +294,10 @@ jobs:
             echo "No screenshot changes to commit."
             exit 0
           fi
-          git commit -m "chore: regenerate screenshots (Android 17) [skip ci]"
+          # Deliberately NOT tagged [skip ci]. A screenshots-only commit doesn't need a CI build,
+          # but GitHub applies the skip directive to *any* push event naming that commit as its
+          # head — including a tag push. Tagging a release on a [skip ci] commit therefore silently
+          # skips the publish and release jobs, which is exactly what happened to the first v0.3.0
+          # tag. A wasted ~9-minute build beats a release that never gets built.
+          git commit -m "chore: regenerate screenshots (Android 17)"
           git push origin "HEAD:${GITHUB_REF_NAME}"
